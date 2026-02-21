@@ -76,7 +76,7 @@ ONANBU는 디지털 기기에 익숙하지 않은 부모님과, 바쁜 일상 �
 
 ## 4. 기술 스택 및 아키텍처 (Tech Stack)
 
-- **Frontend**: React Native (Expo SDK 54+), TypeScript
+- **Frontend**: React Native (Expo SDK 52), TypeScript
 - **Navigation**: Expo Router (파일 시스템 기반 라우팅)
 - **Backend & DB**: Supabase (PostgreSQL, Auth, Storage, Realtime)
   - **RLS 연동**: 가족 그룹 기반 공유 권한, Storage `media` 버킷 권한 최적화 (`avatars/` 전용 정책 적용)
