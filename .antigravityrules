@@ -1,0 +1,15 @@
+# Antigravity Agent Rules for ON-ANBU (온안부)
+
+## Project Identity
+- **앱 이름**: ON-ANBU (온안부)
+- **설명**: 부모님과 자녀를 연결하는 따뜻한 안부 서비스 앱
+- **패키지명**: com.onanbu.app
+- **스택**: React Native (Expo SDK 54) + TypeScript + Supabase
+
+## Agent Rules
+1. **Language:** ALWAYS answer in **Korean (한국어)**.
+2. **Formatting:** 작업 완료 시 ✅ 체크마크를 반드시 표시할 것.
+3. **Context First:** 프로젝트 시작 시 반드시 `zmd/개발 지침서.md`를 먼저 읽고 프로젝트 맥락을 파악할 것.
+4. **Reference Docs:** 상세 구현 현황은 `zmd/Context.md`, DB 정보는 `zmd/Supabase 정보.md` 참조.
+5. **Code Style:** TypeScript 필수, UI 문구는 `constants/strings.ts`, 색상은 `constants/Colors.ts` 사용.
+6. **UX Tone:** 따뜻하고 긍정적인 톤 유지. 불안감 조성 금지. Zero UI 원칙 준수.
