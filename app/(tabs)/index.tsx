@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ParentProfile, StatusCard } from '@/components/home';
@@ -67,15 +67,62 @@ export default function HomeScreen() {
     fetchTodayStatus();
   }, [selectedParent?.id]);
 
-  // [추가] 화면 포커스 시 부모님 목록 최신화 (프로필 사진 등 반영용)
+  // [추가] 화면 포커스 시 부모님 목록 최신화 및 자동 페치
   useFocusEffect(
     useCallback(() => {
-      // 컴포넌트 마운트/포커스 시 추가 로직이 필요하면 여기에 작성
+      const fetchParentsIfNeeded = async () => {
+        const { user, parents, setParents } = useAuthStore.getState();
+        if (!user) return;
+
+        // 부모님 목록이 없거나 초기 상태인 경우 페칭 시도
+        if (parents.length === 0) {
+          try {
+            // 1. 보호자가 속한 가족 그룹 ID들 가져오기
+            const { data: memberOf, error: memberError } = await supabase
+              .from('family_members')
+              .select('group_id')
+              .eq('guardian_id', user.id);
+
+            if (memberError) throw memberError;
+            const groupIds = memberOf?.map((m: any) => m.group_id) || [];
+
+            if (groupIds.length > 0) {
+              // 2. 그룹 내 부모님 ID들 가져오기
+              const { data: groups, error: groupError } = await supabase
+                .from('family_groups')
+                .select('parent_id')
+                .in('id', groupIds);
+
+              if (groupError) throw groupError;
+              const parentIds = groups?.map((g: any) => g.parent_id).filter((id: any) => id) || [];
+
+              if (parentIds.length > 0) {
+                // 3. 부모님 프로필 정보 가져오기
+                const { data: fetchedParents, error: profileError } = await supabase
+                  .from('profiles')
+                  .select('id, name, email, role, avatar_url')
+                  .in('id', parentIds);
+
+                if (profileError) throw profileError;
+                if (fetchedParents && fetchedParents.length > 0) {
+                  setParents(fetchedParents);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Error auto-fetching parents:', e);
+          }
+        }
+      };
+
+      fetchParentsIfNeeded();
     }, [])
   );
 
   const handleCarePress = useCallback(async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
     router.push('/care');
   }, [router]);
 

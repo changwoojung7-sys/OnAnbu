@@ -6,7 +6,7 @@ import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionCard } from '@/components/care';
@@ -270,7 +270,9 @@ export default function CareScreen() {
                     playsInSilentModeIOS: true,
                 });
 
-                await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                if (Platform.OS !== 'web') {
+                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                }
                 const { recording } = await Audio.Recording.createAsync(
                     Audio.RecordingOptionsPresets.HIGH_QUALITY
                 );
@@ -348,7 +350,9 @@ export default function CareScreen() {
             );
             return;
         }
-        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        if (Platform.OS !== 'web') {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
 
         if (type === 'check_in') {
             setIsTextModalVisible(true);
