@@ -8,7 +8,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const distDir = path.join(__dirname, 'dist');
+// scripts/ 폴더에서 실행되므로 상위 디렉토리(프로젝트 루트)의 dist/ 참조
+const projectRoot = path.join(__dirname, '..');
+const distDir = path.join(projectRoot, 'dist');
 const assetsDir = path.join(distDir, 'assets');
 const nodeModulesDir = path.join(assetsDir, 'node_modules');
 const vendorDir = path.join(assetsDir, '_vendor');
