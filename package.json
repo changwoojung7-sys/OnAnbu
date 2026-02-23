@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build": "npx expo export --platform web && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\""
   },
   "dependencies": {
     "@expo/vector-icons": "~14.0.4",
