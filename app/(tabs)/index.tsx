@@ -67,55 +67,60 @@ export default function HomeScreen() {
     fetchTodayStatus();
   }, [selectedParent?.id]);
 
-  // [추가] 화면 포커스 시 부모님 목록 최신화 및 자동 페치
+  // [추가] 화면 포커스 시 부모님 프로필 최신화
   useFocusEffect(
     useCallback(() => {
-      const fetchParentsIfNeeded = async () => {
-        const { user, parents, setParents } = useAuthStore.getState();
+      const refreshParentProfiles = async () => {
+        const { user, parents: currentParents, selectedParent: currentSelected, setParents, setSelectedParent } = useAuthStore.getState();
         if (!user) return;
 
-        // 부모님 목록이 없거나 초기 상태인 경우 페칭 시도
-        if (parents.length === 0) {
-          try {
-            // 1. 보호자가 속한 가족 그룹 ID들 가져오기
-            const { data: memberOf, error: memberError } = await supabase
-              .from('family_members')
-              .select('group_id')
-              .eq('guardian_id', user.id);
+        try {
+          // 1. 보호자가 속한 가족 그룹 ID들 가져오기
+          const { data: memberOf, error: memberError } = await supabase
+            .from('family_members')
+            .select('group_id')
+            .eq('guardian_id', user.id);
 
-            if (memberError) throw memberError;
-            const groupIds = memberOf?.map((m: any) => m.group_id) || [];
+          if (memberError) throw memberError;
+          const groupIds = memberOf?.map((m: any) => m.group_id) || [];
 
-            if (groupIds.length > 0) {
-              // 2. 그룹 내 부모님 ID들 가져오기
-              const { data: groups, error: groupError } = await supabase
-                .from('family_groups')
-                .select('parent_id')
-                .in('id', groupIds);
+          if (groupIds.length > 0) {
+            // 2. 그룹 내 부모님 ID들 가져오기
+            const { data: groups, error: groupError } = await supabase
+              .from('family_groups')
+              .select('parent_id')
+              .in('id', groupIds);
 
-              if (groupError) throw groupError;
-              const parentIds = groups?.map((g: any) => g.parent_id).filter((id: any) => id) || [];
+            if (groupError) throw groupError;
+            const parentIds = groups?.map((g: any) => g.parent_id).filter((id: any) => id) || [];
 
-              if (parentIds.length > 0) {
-                // 3. 부모님 프로필 정보 가져오기
-                const { data: fetchedParents, error: profileError } = await supabase
-                  .from('profiles')
-                  .select('id, name, email, role, avatar_url')
-                  .in('id', parentIds);
+            if (parentIds.length > 0) {
+              // 3. 부모님 프로필 정보 최신 조회
+              const { data: fetchedParents, error: profileError } = await supabase
+                .from('profiles')
+                .select('id, name, email, role, avatar_url')
+                .in('id', parentIds);
 
-                if (profileError) throw profileError;
-                if (fetchedParents && fetchedParents.length > 0) {
-                  setParents(fetchedParents);
+              if (profileError) throw profileError;
+              if (fetchedParents && fetchedParents.length > 0) {
+                setParents(fetchedParents);
+
+                // 현재 선택된 부모님의 프로필도 최신 데이터로 갱신
+                if (currentSelected) {
+                  const updated = fetchedParents.find((p: any) => p.id === currentSelected.id);
+                  if (updated) {
+                    setSelectedParent(updated);
+                  }
                 }
               }
             }
-          } catch (e) {
-            console.error('Error auto-fetching parents:', e);
           }
+        } catch (e) {
+          console.error('Error refreshing parent profiles:', e);
         }
       };
 
-      fetchParentsIfNeeded();
+      refreshParentProfiles();
     }, [])
   );
 

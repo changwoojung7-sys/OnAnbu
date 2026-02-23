@@ -1,11 +1,12 @@
 
 import { colors } from '@/constants/Colors';
 import { borderRadius, commonStyles, spacing, typography } from '@/constants/theme';
+import { getNotificationPermission, requestNotificationPermission, startRealtimeNotifications, stopRealtimeNotifications } from '@/lib/notificationService';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Platform, Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,6 +18,28 @@ export default function NotificationSettingsScreen() {
     const [enabled, setEnabled] = useState(user?.notification_enabled ?? true);
     const [time, setTime] = useState(user?.notification_time?.substring(0, 5) || '09:00');
     const [isSaving, setIsSaving] = useState(false);
+    const [permissionStatus, setPermissionStatus] = useState<string>('default');
+
+    // 권한 상태 확인
+    useEffect(() => {
+        if (Platform.OS === 'web') {
+            setPermissionStatus(getNotificationPermission());
+        }
+    }, []);
+
+    // 알림 토글 ON 시 권한 요청
+    const handleToggle = async (value: boolean) => {
+        setEnabled(value);
+        if (value && Platform.OS === 'web') {
+            const perm = await requestNotificationPermission();
+            setPermissionStatus(perm);
+            if (perm === 'denied') {
+                if (Platform.OS === 'web') {
+                    window.alert('브라우저에서 알림이 차단되어 있습니다. 브라우저 설정에서 알림을 허용해주세요.');
+                }
+            }
+        }
+    };
 
     const handleSave = async () => {
         // Simple time validation (HH:MM)
@@ -54,6 +77,16 @@ export default function NotificationSettingsScreen() {
                 setUser({ ...user, ...updates });
             }
 
+            // 알림 ON/OFF에 따라 Realtime 구독 시작/중지
+            if (enabled) {
+                const perm = await requestNotificationPermission();
+                if (perm === 'granted') {
+                    startRealtimeNotifications(user.id, user.role || 'guardian');
+                }
+            } else {
+                stopRealtimeNotifications();
+            }
+
             console.log('[NotificationSettings] Save success');
             if (Platform.OS === 'web') {
                 window.alert('알림 설정이 저장되었습니다.');
@@ -75,6 +108,20 @@ export default function NotificationSettingsScreen() {
         }
     };
 
+    const getPermissionLabel = () => {
+        switch (permissionStatus) {
+            case 'granted': return '✅ 알림이 허용되어 있습니다';
+            case 'denied': return '❌ 브라우저에서 알림이 차단되어 있습니다';
+            case 'unsupported': return '⚠️ 이 브라우저는 알림을 지원하지 않습니다';
+            default: return '💡 알림을 켜면 브라우저 허용 팝업이 표시됩니다';
+        }
+    };
+
+    const isParent = user?.role === 'parent';
+    const descriptionText = isParent
+        ? '가족이 보낸 안부를 실시간으로 받습니다.'
+        : '부모님의 활동이나 안부 확인 알림을 받습니다.';
+
     return (
         <SafeAreaView style={commonStyles.container} edges={['top']}>
             <View style={styles.header}>
@@ -87,18 +134,23 @@ export default function NotificationSettingsScreen() {
 
             <View style={styles.content}>
                 <View style={styles.settingItem}>
-                    <View>
+                    <View style={{ flex: 1 }}>
                         <Text style={styles.label}>알림 받기</Text>
-                        <Text style={styles.description}>
-                            부모님의 활동이나 안부 확인 알림을 받습니다.
-                        </Text>
+                        <Text style={styles.description}>{descriptionText}</Text>
                     </View>
                     <Switch
                         value={enabled}
-                        onValueChange={setEnabled}
+                        onValueChange={handleToggle}
                         trackColor={{ true: colors.primary, false: colors.border }}
                     />
                 </View>
+
+                {/* 브라우저 알림 권한 상태 */}
+                {Platform.OS === 'web' && (
+                    <View style={styles.permissionBanner}>
+                        <Text style={styles.permissionText}>{getPermissionLabel()}</Text>
+                    </View>
+                )}
 
                 {enabled && (
                     <View style={styles.settingItem}>
@@ -164,6 +216,19 @@ const styles = StyleSheet.create({
     },
     label: { ...typography.h3, fontSize: 16, color: colors.textPrimary, marginBottom: 4 },
     description: { ...typography.caption, color: colors.textSecondary, maxWidth: 200 },
+    permissionBanner: {
+        backgroundColor: colors.background,
+        padding: spacing.md,
+        borderRadius: borderRadius.md,
+        marginBottom: spacing.xl,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    permissionText: {
+        ...typography.caption,
+        color: colors.textSecondary,
+        textAlign: 'center',
+    },
     timeInput: {
         backgroundColor: colors.background,
         padding: spacing.sm,

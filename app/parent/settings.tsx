@@ -68,7 +68,10 @@ export default function ParentSettingsScreen() {
                         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                     </Pressable>
 
-                    <Pressable style={styles.menuItem}>
+                    <Pressable
+                        style={styles.menuItem}
+                        onPress={() => router.push('/notifications')}
+                    >
                         <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
                         <Text style={styles.menuItemText}>알림 설정</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />

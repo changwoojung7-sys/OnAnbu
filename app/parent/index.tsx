@@ -50,15 +50,24 @@ export default function ParentHomeScreen() {
     const fetchPendingActions = async () => {
         if (!user?.id) return;
 
+        const today = new Date().toISOString().split('T')[0];
+        const startOfDay = `${today}T00:00:00.000Z`;
+
         const { data } = await supabase
             .from('action_logs')
-            .select('*')
+            .select('*, guardian:profiles!action_logs_guardian_id_fkey(name)')
             .eq('parent_id', user.id)
-            .eq('status', 'pending')
+            .gte('created_at', startOfDay)
             .order('created_at', { ascending: false });
 
         if (data) {
-            setPendingActions(data);
+            // 부모님 본인이 보낸 메시지는 받은 안부 목록에서 제외
+            // - type='message': 부모님이 보낸 사진/동영상/음성
+            // - '일어났어요! ☀️': 부모님의 기상 알림
+            const received = data.filter((a: any) =>
+                a.type !== 'message' && a.message !== '일어났어요! ☀️'
+            );
+            setPendingActions(received);
         }
     };
 
@@ -284,7 +293,11 @@ export default function ParentHomeScreen() {
 
             const asset = result.assets[0];
             const isVideo = asset.type === 'video';
-            const fileExt = asset.uri.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
+            // 웹 환경: blob URI에서 확장자를 추출할 수 없으므로 기본값 사용
+            const isWebBlobUri = asset.uri.startsWith('blob:') || asset.uri.startsWith('data:');
+            const fileExt = isWebBlobUri
+                ? (isVideo ? 'mp4' : 'jpg')
+                : (asset.uri.split('.').pop() || (isVideo ? 'mp4' : 'jpg'));
             const fileName = `parent-${isVideo ? 'video' : 'photo'}-${user.id}-${Date.now()}.${fileExt}`;
             const filePath = `parent-messages/${fileName}`;
             const mimeType = isVideo ? `video/${fileExt}` : `image/${fileExt}`;
@@ -437,8 +450,12 @@ export default function ParentHomeScreen() {
         if (type === 'voice_cheer') return '음성 메시지';
         if (type === 'video') return '동영상 안부';
         if (type === 'photo') return '사진 안부';
-        if (type === 'check_in') return '기상 알림';
+        if (type === 'check_in') return '안부 체크';
         return '안부 체크';
+    };
+
+    const getSenderName = (action: any) => {
+        return (action.guardian as any)?.name || guardianName;
     };
 
     const formatTime = (isoString: string) => {
@@ -457,7 +474,11 @@ export default function ParentHomeScreen() {
                 <View style={styles.header}>
                     <View>
                         <Text style={styles.greeting}>안녕하세요, {user?.name || '사용자'}님 🌸</Text>
-                        <Text style={styles.subGreeting}>{guardianName}(이)가 안부를 보냈어요</Text>
+                        <Text style={styles.subGreeting}>
+                            {pendingActions.length > 0
+                                ? `${getSenderName(pendingActions[0])}(이)가 안부를 보냈어요`
+                                : `${guardianName}(이)가 안부를 보냈어요`}
+                        </Text>
                     </View>
                     <Pressable
                         style={styles.settingsButton}
@@ -517,7 +538,7 @@ export default function ParentHomeScreen() {
                 <View style={[styles.section, styles.pendingActionsSection]}>
                     <View style={styles.sectionHeader}>
                         <Text style={styles.sectionTitle}>
-                            💌 새로 받은 안부 {pendingActions.length > 0 && `(${pendingActions.length})`}
+                            💌 오늘의 안부 {pendingActions.length > 0 && `(${pendingActions.length})`}
                         </Text>
                         <Pressable onPress={handleViewFullHistory}>
                             <Text style={styles.viewHistoryText}>전체 보기 〉</Text>
@@ -545,7 +566,7 @@ export default function ParentHomeScreen() {
                                     </View>
                                     <View style={styles.actionContent}>
                                         <Text style={styles.actionLabel}>
-                                            {guardianName}님의 {getActionLabel(action.type)}
+                                            {getSenderName(action)}님의 {getActionLabel(action.type)}
                                         </Text>
                                         <Text style={styles.actionTime}>
                                             {formatTime(action.created_at)}

@@ -24,19 +24,19 @@ class MockRewardedAd {
     }
 
     load() {
-        // 웹 환경에서는 로드 완료 이벤트를 즉시 모방 (0.5초 대기)
+        // 웹 환경에서는 로드 완료 이벤트를 모방 (4초 대기 → 광고 로딩 모달이 보이도록)
         setTimeout(() => {
             this.listeners[RewardedAdEventType.LOADED]?.forEach(cb => cb());
-        }, 500);
+        }, 4000);
     }
 
     show() {
         console.log('[Web Mock] 광고 재생칭 시뮬레이션 중...');
-        // 웹 환경에서는 광고 재생을 시뮬레이션하고 1초 뒤에 리워드 이벤트를 발생
+        // 웹 환경에서는 광고 재생을 시뮬레이션하고 2초 뒤에 리워드 이벤트를 발생
         setTimeout(() => {
             const reward = { type: 'reward', amount: 1 };
             this.listeners[RewardedAdEventType.EARNED_REWARD]?.forEach(cb => cb(reward));
-        }, 1000);
+        }, 2000);
     }
 }
 

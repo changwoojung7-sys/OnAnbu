@@ -15,9 +15,17 @@ interface HistoryFeedProps {
     hideHeader?: boolean;
 }
 
+const MOOD_MAP: Record<string, { emoji: string; label: string }> = {
+    great: { emoji: '😊', label: '아주 좋아요' },
+    good: { emoji: '🙂', label: '좋아요' },
+    okay: { emoji: '😐', label: '그저 그래요' },
+    not_good: { emoji: '😔', label: '좋지 않아요' },
+};
+
 export function HistoryFeed({ hideHeader = false }: HistoryFeedProps) {
     const { user, selectedParent } = useAuthStore();
     const [actions, setActions] = useState<ActionLog[]>([]);
+    const [moodByDate, setMoodByDate] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
 
@@ -79,6 +87,39 @@ export function HistoryFeed({ hideHeader = false }: HistoryFeedProps) {
 
             if (error) throw error;
             if (logs) setActions(logs as any[]);
+
+            // 부모님 기분(daily_status) 조회
+            try {
+                // 조회된 그룹에 연결된 부모님 ID 수집
+                const { data: groups } = await supabase
+                    .from('family_groups')
+                    .select('parent_id')
+                    .in('id', targetGroupIds);
+                const parentIds = groups?.map((g: any) => g.parent_id) || [];
+                // user 본인이 parent인 경우도 포함
+                if (user?.id && !parentIds.includes(user.id)) {
+                    parentIds.push(user.id);
+                }
+                if (parentIds.length > 0) {
+                    const { data: statuses } = await supabase
+                        .from('daily_status')
+                        .select('parent_id, status_date, mood')
+                        .in('parent_id', parentIds)
+                        .not('mood', 'is', null)
+                        .order('status_date', { ascending: false })
+                        .limit(30);
+                    if (statuses) {
+                        const moodMap: Record<string, string> = {};
+                        statuses.forEach((s: any) => {
+                            // key: "parentId_date" 형태로 저장
+                            moodMap[`${s.parent_id}_${s.status_date}`] = s.mood;
+                        });
+                        setMoodByDate(moodMap);
+                    }
+                }
+            } catch (moodErr) {
+                console.log('[History] Mood fetch error (ignored):', moodErr);
+            }
         } catch (err) {
             console.error('[History] Fetch error:', err);
         } finally {
@@ -238,6 +279,13 @@ export function HistoryFeed({ hideHeader = false }: HistoryFeedProps) {
             ? (item.parent?.name || '부모님')
             : (item.guardian?.name || '가족');
 
+        // 해당 날짜의 부모님 기분 조회
+        const itemDate = item.created_at.split('T')[0];
+        const parentId = item.parent_id;
+        const moodKey = `${parentId}_${itemDate}`;
+        const moodValue = moodByDate[moodKey];
+        const moodInfo = moodValue ? MOOD_MAP[moodValue] : null;
+
         // 미디어 판별 (부모님이 보낸 message 타입에도 대응)
         const isVideo = (item.type === 'video' || (item.type === 'message' && item.content_url?.endsWith('.mp4'))) && !!item.content_url;
         const isAudio = (item.type === 'voice_cheer' || (item.type === 'message' && item.content_url?.endsWith('.m4a'))) && !!item.content_url;
@@ -330,6 +378,14 @@ export function HistoryFeed({ hideHeader = false }: HistoryFeedProps) {
                 {hasText && (
                     <View style={[styles.messageBubble, !(isPhoto || isVideo) && styles.messageBubbleStandAlone]}>
                         <Text style={styles.messageText}>"{item.message}"</Text>
+                    </View>
+                )}
+
+                {/* 부모님 기분 표시 (해당 날짜에 mood가 기록된 경우) */}
+                {isFromParent && moodInfo && (
+                    <View style={styles.moodBadge}>
+                        <Text style={styles.moodBadgeEmoji}>{moodInfo.emoji}</Text>
+                        <Text style={styles.moodBadgeText}>오늘 기분: {moodInfo.label}</Text>
                     </View>
                 )}
             </View>
@@ -523,6 +579,21 @@ const styles = StyleSheet.create({
         ...typography.bodyLarge,
         color: colors.textSecondary,
         marginBottom: spacing.xs,
+    },
+    moodBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: spacing.lg,
+        paddingBottom: spacing.md,
+        gap: 6,
+    },
+    moodBadgeEmoji: {
+        fontSize: 18,
+    },
+    moodBadgeText: {
+        ...typography.small,
+        color: colors.textSecondary,
+        fontWeight: '500',
     },
     emptySubText: {
         ...typography.small,

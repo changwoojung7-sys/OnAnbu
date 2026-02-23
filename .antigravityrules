@@ -18,3 +18,7 @@
 - git add . (모든 변경사항 담기)
 - git commit -m "메시지" (설명 적기)
 - git push (깃허브로 보내기)
+
+
+npx start web
+npx run app

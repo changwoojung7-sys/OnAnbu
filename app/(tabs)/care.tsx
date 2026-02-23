@@ -109,13 +109,17 @@ export default function CareScreen() {
         try {
             let fileData: ArrayBuffer | Blob;
 
-            if (base64Data) {
+            if (Platform.OS === 'web') {
+                // 웹 환경: expo-file-system이 동작하지 않으므로 항상 fetch → blob 사용
+                const res = await fetch(uri);
+                fileData = await res.blob();
+            } else if (base64Data) {
                 fileData = decode(base64Data);
             } else if (type === 'voice_cheer') {
                 const base64 = await FileSystem.readAsStringAsync(uri, { encoding: 'base64' });
                 fileData = decode(base64);
             } else {
-                // 비디오 등 대용량 파일은 base64 변환을 우회하기 위해 fetch Blob 사용 (웹, 네이티브 호환)
+                // 비디오 등 대용량 파일은 base64 변환을 우회하기 위해 fetch Blob 사용
                 const res = await fetch(uri);
                 fileData = await res.blob();
             }
@@ -124,13 +128,16 @@ export default function CareScreen() {
             let ext = 'm4a';
             let contentType = 'audio/m4a';
 
-            if (type === 'photo') {
+            // 웹 환경: blob/data URI에서는 확장자를 추출할 수 없으므로 기본값 사용
+            const isWebBlobUri = uri.startsWith('blob:') || uri.startsWith('data:');
+
+            if (type === 'photo' || (type === 'message' && mediaType === 'photo')) {
                 folder = 'photos';
-                ext = uri.split('.').pop() || 'jpg';
-                contentType = `image/${ext}`;
-            } else if (type === 'video') {
+                ext = isWebBlobUri ? 'jpg' : (uri.split('.').pop() || 'jpg');
+                contentType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+            } else if (type === 'video' || (type === 'message' && mediaType === 'video')) {
                 folder = 'videos';
-                ext = uri.split('.').pop() || 'mp4';
+                ext = isWebBlobUri ? 'mp4' : (uri.split('.').pop() || 'mp4');
                 contentType = `video/${ext}`;
             }
 
@@ -202,8 +209,14 @@ export default function CareScreen() {
                 created_at: new Date().toISOString(),
                 played_at: null,
             });
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            Alert.alert('💌 전송 완료', `${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
+            if (Platform.OS !== 'web') {
+                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            if (Platform.OS === 'web') {
+                window.alert(`💌 ${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
+            } else {
+                Alert.alert('💌 전송 완료', `${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
+            }
         } catch (err: any) {
             console.error('[Care] 예외:', err);
             Alert.alert('오류', '안부 전송 중 문제가 발생했습니다.');
@@ -235,9 +248,9 @@ export default function CareScreen() {
             reward => {
                 console.log('User earned reward of ', reward);
                 // 광고 시청 후 DB 전송
-                // type이 'voice_cheer'로 넘어오더라도, mediaType에 따라 실제 전송 타입을 오버라이드. 
-                const finalType = (type === 'voice_cheer' && mediaType) ? mediaType : type;
-                executeSendCareAction(finalType, payloadMessage, payloadUri, mediaBase64);
+                // DB 제약조건(action_logs_type_check)에 의해 photo/video 타입은 허용되지 않으므로
+                // voice_cheer 타입으로 전송하고, content_url 확장자로 미디어 종류를 구분
+                executeSendCareAction(type, payloadMessage, payloadUri, mediaBase64);
             },
         );
 
@@ -306,21 +319,31 @@ export default function CareScreen() {
     };
 
     const pickMediaFromGallery = async (isVideo: boolean) => {
-        const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: isVideo ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            quality: 0.7,
-            base64: !isVideo, // 이미지만 base64를 추출하고 영상은 제외
-        });
+        try {
+            const isWeb = Platform.OS === 'web';
+            const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: isVideo ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: !isWeb, // 웹에서는 편집 모드가 파일 선택을 방해할 수 있음
+                quality: 0.7,
+                base64: !isWeb && !isVideo, // 웹에서는 base64 불필요 (fetch→blob 방식 사용)
+            });
 
-        if (!result.canceled && result.assets && result.assets.length > 0) {
-            const asset = result.assets[0];
-            setMediaType(isVideo ? 'video' : 'photo');
-            setMediaUri(asset.uri);
-            if (!isVideo && asset.base64) {
-                setMediaBase64(asset.base64);
+            if (!result.canceled && result.assets && result.assets.length > 0) {
+                const asset = result.assets[0];
+                setMediaType(isVideo ? 'video' : 'photo');
+                setMediaUri(asset.uri);
+                if (!isWeb && !isVideo && asset.base64) {
+                    setMediaBase64(asset.base64);
+                } else {
+                    setMediaBase64(null);
+                }
+            }
+        } catch (error) {
+            console.error('[Care] 미디어 선택 에러:', error);
+            if (Platform.OS === 'web') {
+                window.alert('미디어를 선택할 수 없습니다. 다시 시도해주세요.');
             } else {
-                setMediaBase64(null);
+                Alert.alert('오류', '미디어를 선택할 수 없습니다.');
             }
         }
     };
@@ -331,8 +354,8 @@ export default function CareScreen() {
             return;
         }
         setIsMediaModalVisible(false);
-        // 액션 타입 오버라이드는 startAdRewardFlow 내부에서 mediaType 참조
-        startAdRewardFlow('voice_cheer', undefined, mediaUri);
+        // 사진은 'photo', 영상은 'video', 음성은 'voice_cheer' 타입으로 전송
+        startAdRewardFlow(mediaType as ActionType, undefined, mediaUri);
     };
 
     const resetMediaModal = () => {

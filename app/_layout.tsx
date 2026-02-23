@@ -10,6 +10,8 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/components/useColorScheme';
 import { colors } from '@/constants/Colors';
 import { supabase } from '@/lib/supabase';
+// TODO: Supabase Realtime 유료 구독 후 활성화
+// import { requestNotificationPermission, startRealtimeNotifications, stopRealtimeNotifications } from '@/lib/notificationService';
 import { useAuthStore } from '@/stores/authStore';
 
 export {
@@ -109,6 +111,7 @@ function RootLayoutNav() {
           console.log('Initial sign-in event, handled by checkSession');
         }
       } else if (event === 'SIGNED_OUT') {
+        // stopRealtimeNotifications(); // TODO: Realtime 활성화 후 주석 해제
         setUser(null);
         setIsAuthenticated(false);
         setIsLoading(false);
@@ -240,6 +243,15 @@ function RootLayoutNav() {
           if (data.role !== 'parent' && data.role !== 'admin') {
             await fetchGuardianParents(data.id);
           }
+
+          // TODO: Supabase Realtime 유료 구독 후 활성화
+          // if (data.notification_enabled) {
+          //   requestNotificationPermission().then((perm) => {
+          //     if (perm === 'granted') {
+          //       startRealtimeNotifications(data.id, data.role || 'guardian');
+          //     }
+          //   });
+          // }
 
           setIsAuthenticated(true);
           setIsLoading(false);
