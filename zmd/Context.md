@@ -86,11 +86,11 @@ ONANBU는 디지털 기기에 익숙하지 않은 부모님과, 바쁜 일상 �
 - **Navigation**: Expo Router (파일 시스템 기반 라우팅)
 - **Backend & DB**: Supabase (PostgreSQL, Auth, Storage, Realtime)
   - **RLS 연동**: 가족 그룹 기반 공유 권한, Storage `media` 버킷 권한 최적화 (`avatars/` 전용 정책 적용)
-- **Deployment**: **Cloudflare Pages** (GitHub 연동, SPA `single` 빌드 방식 적용)
+- **Deployment**: **Cloudflare Pages** (GitHub 연동, `npm run build` → `expo export` + `404.html` 복사 SPA 방식)
 - **State Management**: Zustand (`authStore`, `actionStore`)
 - **Advertising**: Google Mobile Ads SDK (`react-native-google-mobile-ads`) 보상형 광고(Rewarded Ad) 연동
 - **Styling**: `StyleSheet` w/ Constant Design Tokens (`constants/Colors.ts`, `theme.ts`)
-- **Routing Support**: `_redirects` 설정을 통해 Cloudflare SPA 라우팅 새로고침 에러 방지
+- **Routing Support**: 빌드 시 `index.html`을 `404.html`로 복사하여 Cloudflare Pages SPA 라우팅 지원 (`_redirects` 미사용)
 
 ### 주요 디렉토리 구조
 

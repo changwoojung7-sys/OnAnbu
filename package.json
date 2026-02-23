@@ -7,7 +7,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "npx expo export --platform web && node -e \"require('fs').copyFileSync('dist/index.html','dist/404.html')\""
+    "build": "npx expo export --platform web && node scripts/postbuild-cloudflare.js"
   },
   "dependencies": {
     "@expo/vector-icons": "~14.0.4",
