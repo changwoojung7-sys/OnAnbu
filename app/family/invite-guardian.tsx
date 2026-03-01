@@ -32,7 +32,7 @@ export default function InviteGuardianScreen() {
     const [parents, setParents] = useState<{ groupId: string, parentName: string }[]>([]);
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
-    const relationships = ['형제', '자매', '배우자', '사촌', '친척', '기타'];
+    const relationships = ['아내', '아들', '딸', '형제', '자매', '배우자', '친구', '동료', '사촌', '친척', '기타'];
 
     useEffect(() => {
         const fetchParents = async () => {
@@ -46,7 +46,7 @@ export default function InviteGuardianScreen() {
             if (data && !error) {
                 const parentsList = data.map((item: any) => ({
                     groupId: item.group_id,
-                    parentName: item.family_groups?.profiles?.name || '부모님'
+                    parentName: item.family_groups?.profiles?.name || '케어대상'
                 }));
                 setParents(parentsList);
                 if (parentsList.length > 0) {
@@ -64,7 +64,7 @@ export default function InviteGuardianScreen() {
         }
 
         if (!selectedGroupId) {
-            Alert.alert('알림', '초대할 부모님을 선택해주세요.\n아직 연동된 부모님이 없다면 먼저 부모님을 초대해주세요.');
+            Alert.alert('알림', '초대할 대상을 선택해주세요.\n아직 연동된 케어대상이 없다면 먼저 케어대상을 초대해주세요.');
             return;
         }
 
@@ -120,7 +120,7 @@ export default function InviteGuardianScreen() {
     const handleShare = async () => {
         try {
             await Share.share({
-                message: `${guardianName}님, ONANBU 앱에서 함께 부모님을 케어해요!\n\n초대코드: ${inviteCode}\n\n앱에서 회원가입 후 초대코드를 입력해주세요.`,
+                message: `${guardianName}님, ONANBU 앱에서 함께 케어해요!\n\n초대코드: ${inviteCode}\n\n앱에서 회원가입 후 초대코드를 입력해주세요.`,
             });
         } catch (error) {
             console.error(error);
@@ -145,7 +145,7 @@ export default function InviteGuardianScreen() {
                     <Text style={styles.emoji}>🤝</Text>
                     <Text style={styles.title}>보조 보호자 초대</Text>
                     <Text style={styles.subtitle}>
-                        함께 부모님을 케어할 가족을 초대하세요
+                        함께 케어할 가족이나 지인을 초대하세요
                     </Text>
                 </View>
 
@@ -155,7 +155,7 @@ export default function InviteGuardianScreen() {
                         <View style={styles.form}>
                             {parents.length > 0 && (
                                 <View style={styles.inputGroup}>
-                                    <Text style={styles.label}>초대 대상 부모님</Text>
+                                    <Text style={styles.label}>함께 케어할 대상</Text>
                                     <View style={styles.relationshipContainer}>
                                         {parents.map((p) => (
                                             <Pressable

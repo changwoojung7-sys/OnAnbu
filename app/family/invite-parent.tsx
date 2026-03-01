@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator, Alert, Share } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, Share, StyleSheet, Text, TextInput, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
-import { spacing, typography, borderRadius, softShadow } from '@/constants/theme';
+import { borderRadius, softShadow, spacing, typography } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -29,11 +29,11 @@ export default function InviteParentScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [isCodeGenerated, setIsCodeGenerated] = useState(false);
 
-    const relationships = ['어머니', '아버지', '장인어른', '장모님', '시아버지', '시어머니', '할머니', '할아버지', '외할머니', '외할아버지'];
+    const relationships = ['어머니', '아버지', '아내', '아들', '딸', '형제', '장인어른', '장모님', '시아버지', '시어머니', '할머니', '할아버지', '외할머니', '외할아버지', '친구', '동료', '기타'];
 
     const handleGenerateCode = async () => {
         if (!parentName.trim()) {
-            Alert.alert('알림', '부모님 이름을 입력해주세요.');
+            Alert.alert('알림', '케어대상 이름을 입력해주세요.');
             return;
         }
 
@@ -85,7 +85,7 @@ export default function InviteParentScreen() {
     const handleShare = async () => {
         try {
             await Share.share({
-                message: `${parentName}님, ONANBU 앱에서 가족의 따뜻한 안부를 받아보세요!\n\n초대코드: ${inviteCode}\n\n앱 다운로드 후 초대코드를 입력해주세요.`,
+                message: `${parentName}님, ONANBU 앱에서 서로의 따뜻한 안부를 받아보세요!\n\n초대코드: ${inviteCode}\n\n앱 다운로드 후 초대코드를 입력해주세요.`,
             });
         } catch (error) {
             console.error(error);
@@ -106,9 +106,9 @@ export default function InviteParentScreen() {
                 {/* Header */}
                 <View style={styles.header}>
                     <Text style={styles.emoji}>👨‍👩‍👧</Text>
-                    <Text style={styles.title}>부모님을 초대하세요</Text>
+                    <Text style={styles.title}>케어대상을 초대하세요</Text>
                     <Text style={styles.subtitle}>
-                        부모님이 앱에서 안부를 받으실 수 있어요
+                        케어대상이 앱에서 안부를 나눌 수 있어요
                     </Text>
                 </View>
 
@@ -117,7 +117,7 @@ export default function InviteParentScreen() {
                         {/* Form */}
                         <View style={styles.form}>
                             <View style={styles.inputGroup}>
-                                <Text style={styles.label}>부모님 이름</Text>
+                                <Text style={styles.label}>케어대상 이름</Text>
                                 <TextInput
                                     style={styles.input}
                                     placeholder="홍길순"
