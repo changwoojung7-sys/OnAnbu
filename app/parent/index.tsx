@@ -163,14 +163,50 @@ export default function ParentHomeScreen() {
 
         if (!user?.id) return;
 
-        // 오늘의 상태 저장
+        // 오늘의 상태 확인 및 업데이트
         const today = new Date().toISOString().split('T')[0];
 
-        await supabase.from('daily_status').upsert({
-            parent_id: user.id,
-            status_date: today,
-            mood,
-        });
+        try {
+            // 1. 오늘 날짜 데이터가 있는지 확인
+            const { data: existingStatus, error: fetchError } = await supabase
+                .from('daily_status')
+                .select('id')
+                .eq('parent_id', user.id)
+                .eq('status_date', today)
+                .maybeSingle();
+
+            if (fetchError) {
+                console.error('기분 상태 조회 오류:', fetchError);
+                return;
+            }
+
+            if (existingStatus) {
+                // 2. 이미 데이터가 있다면 UPDATE 수행
+                const { error: updateError } = await supabase
+                    .from('daily_status')
+                    .update({ mood })
+                    .eq('id', existingStatus.id);
+
+                if (updateError) {
+                    console.error('기분 업데이트 오류:', updateError);
+                }
+            } else {
+                // 3. 오늘 기록이 없다면 새로 INSERT 수행
+                const { error: insertError } = await supabase
+                    .from('daily_status')
+                    .insert({
+                        parent_id: user.id,
+                        status_date: today,
+                        mood,
+                    });
+
+                if (insertError) {
+                    console.error('기분 추가 오류:', insertError);
+                }
+            }
+        } catch (error) {
+            console.error('기분 상태 변경 처리 중 예외 발생:', error);
+        }
     };
 
     const handleAwake = async () => {
