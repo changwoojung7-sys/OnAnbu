@@ -196,12 +196,23 @@ export default function HomeScreen() {
     );
   };
 
+  // 기분에 따른 카드 배경색 반환 함수
+  const getMoodCardColor = () => {
+    if (!todayMood) return '#f5f5f5'; // 기본 배경색
+    switch (todayMood.label) {
+      case '아주 좋아요': return '#e8f5e9'; // 밝은 녹색
+      case '좋아요': return '#e3f2fd'; // 밝은 파란색
+      case '그저 그래요': return '#fff3e0'; // 연한 주황색
+      case '좋지 않아요': return '#ffebee'; // 연한 빨간색
+      default: return '#f5f5f5';
+    }
+  };
+
   return (
     <SafeAreaView style={commonStyles.container} edges={['top']}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={[styles.header, parents.length === 0 && { marginBottom: spacing.xl }]}>
@@ -247,27 +258,30 @@ export default function HomeScreen() {
           </View>
         ) : (
           <View style={styles.mainContainer}>
-            {/* 상단: 부모님 기상 및 기분 상태 (배경 스며드는 디자인) */}
-            <View style={styles.topStatusContainer}>
-              {isAwake ? (
-                <View style={[styles.statusBadge, { backgroundColor: '#e8f5e9' }]}>
-                  <Text style={styles.statusText}>☀️ {parentName}님께서 기상하셨어요!</Text>
-                </View>
-              ) : (
-                <Text style={styles.pendingText}>아직 {parentName}님의 기상 소식이 없어요.</Text>
-              )}
+            {/* 상단: 기분 표시 카드 (좌측 꽃, 우측 상태) */}
+            <View style={[styles.moodCard, { backgroundColor: getMoodCardColor() }]}>
+              {/* 좌측 꽃 그림 */}
+              <View style={styles.moodFlowerContainer}>
+                <Text style={styles.moodFlower}>🌸</Text>
+              </View>
 
-              {todayMood && (
-                <View style={[styles.statusBadge, { backgroundColor: '#e3f2fd', marginTop: spacing.sm }]}>
-                  <Text style={styles.statusEmoji}>{todayMood.emoji}</Text>
-                  <Text style={styles.statusText}>오늘 기분: {todayMood.label}</Text>
-                </View>
-              )}
-            </View>
+              {/* 우측 부모님 상태 */}
+              <View style={styles.moodStatusContainer}>
+                {isAwake ? (
+                  <View style={[styles.moodBadge, { backgroundColor: 'rgba(255,255,255,0.7)' }]}>
+                    <Text style={styles.moodStatusText}>☀️ {parentName}님께서 기상하셨어요!</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.pendingText}>아직 {parentName}님의 기상 소식이 없어요.</Text>
+                )}
 
-            {/* 중앙: 꽃그림 */}
-            <View style={styles.flowerContainer}>
-              <Text style={styles.largeFlower}>🌸</Text>
+                {todayMood && (
+                  <View style={[styles.moodBadge, { backgroundColor: 'rgba(255,255,255,0.7)', marginTop: spacing.sm }]}>
+                    <Text style={styles.statusEmoji}>{todayMood.emoji}</Text>
+                    <Text style={styles.moodStatusText}>오늘 기분: {todayMood.label}</Text>
+                  </View>
+                )}
+              </View>
             </View>
 
             {/* 하단: 오늘의 안부 목록 (부모님 화면 스타일 통일) */}
@@ -502,28 +516,42 @@ const styles = StyleSheet.create({
   },
   mainContainer: {
     flex: 1,
-    paddingTop: spacing.md,
+    paddingTop: spacing.xs,
   },
-  topStatusContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    width: '100%',
-  },
-  statusBadge: {
+  moodCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    borderRadius: 24,
+    padding: spacing.md,
+    marginBottom: spacing.xxl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  moodFlowerContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingRight: spacing.md,
+  },
+  moodFlower: {
+    fontSize: 56,
+  },
+  moodStatusContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  moodBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  statusText: {
-    fontSize: 15,
-    fontWeight: '600',
+  moodStatusText: {
+    fontSize: 14,
+    fontWeight: '700',
     color: colors.textPrimary,
   },
   statusEmoji: {
@@ -531,16 +559,9 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   pendingText: {
-    fontSize: 14,
+    fontSize: 13,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
-  },
-  flowerContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  largeFlower: {
-    fontSize: 64,
   },
   actionsSection: {
     width: '100%',
