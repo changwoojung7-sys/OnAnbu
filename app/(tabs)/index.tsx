@@ -171,25 +171,27 @@ export default function HomeScreen() {
       if (action.type === 'message') actionLabel = '사진/영상';
       else actionLabel = '기상/안부';
     } else {
-      if (action.type === 'voice_cheer') actionLabel = '음성 안부';
+      if (action.type === 'voice_cheer') actionLabel = '음성 응원';
       else if (action.type === 'video') actionLabel = '동영상 안부';
       else if (action.type === 'photo') actionLabel = '사진 안부';
       else actionLabel = '안부 체크';
     }
 
     return (
-      <Pressable key={action.id} style={styles.actionRow} onPress={() => router.push('/two')}>
-        <View style={styles.actionIconWrapper}>
-          <Ionicons name={getActionIcon(action.type)} size={20} color={colors.primary} />
+      <Pressable key={action.id} style={styles.actionCard} onPress={() => router.push('/two')}>
+        <View style={styles.actionIconContainer}>
+          <Ionicons name={getActionIcon(action.type)} size={24} color={colors.primary} />
         </View>
-        <View style={styles.actionRowContent}>
-          <Text style={styles.actionRowTitle}>{senderName}님의 {actionLabel}</Text>
+        <View style={styles.actionContent}>
+          <Text style={styles.actionLabel}>{senderName}님의 {actionLabel}</Text>
           {action.message && action.message !== '일어났어요! ☀️' && (
             <Text style={styles.actionRowMessage} numberOfLines={1}>"{action.message}"</Text>
           )}
-          <Text style={styles.actionRowTime}>{formatTime(action.created_at)}</Text>
+          <Text style={styles.actionTime}>{formatTime(action.created_at)}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+        <View style={styles.playButton}>
+          <Ionicons name="play" size={20} color={colors.textWhite} />
+        </View>
       </Pressable>
     );
   };
@@ -244,9 +246,9 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         ) : (
-          <View style={styles.summaryContainer}>
-            {/* 부모님 기상 및 기분 상태 */}
-            <View style={styles.topStatus}>
+          <View style={styles.mainContainer}>
+            {/* 상단: 부모님 기상 및 기분 상태 (배경 스며드는 디자인) */}
+            <View style={styles.topStatusContainer}>
               {isAwake ? (
                 <View style={[styles.statusBadge, { backgroundColor: '#e8f5e9' }]}>
                   <Text style={styles.statusText}>☀️ {parentName}님께서 기상하셨어요!</Text>
@@ -263,28 +265,51 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {/* 꽃그림 */}
+            {/* 중앙: 꽃그림 */}
             <View style={styles.flowerContainer}>
               <Text style={styles.largeFlower}>🌸</Text>
             </View>
 
-            {/* 오늘의 안부 목록 */}
+            {/* 하단: 오늘의 안부 목록 (부모님 화면 스타일 통일) */}
             <View style={styles.actionsSection}>
-              <Text style={styles.actionsTitle}>💌 오늘의 안부 ({todayActions.length})</Text>
+              <View style={styles.sectionHeader}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={styles.sectionTitle}>
+                    💌 오늘의 안부 {todayActions.length > 0 && `(${todayActions.length})`}
+                  </Text>
+                  <Pressable
+                    onPress={fetchTodayData}
+                    disabled={isRefreshing}
+                    hitSlop={10}
+                    style={({ pressed }) => [{
+                      marginLeft: 6,
+                      marginTop: -4,
+                      opacity: pressed ? 0.6 : 1
+                    }]}
+                  >
+                    {isRefreshing ? (
+                      <ActivityIndicator size="small" color={colors.primary} />
+                    ) : (
+                      <Ionicons name="refresh" size={20} color={colors.primary} />
+                    )}
+                  </Pressable>
+                </View>
+                <Pressable onPress={() => router.push('/two')}>
+                  <Text style={styles.viewHistoryText}>전체 보기 〉</Text>
+                </Pressable>
+              </View>
+
               {todayActions.length > 0 ? (
-                <View style={styles.actionList}>
+                <View style={styles.actionsList}>
                   {todayActions.map(action => renderActionItem(action))}
                 </View>
               ) : (
                 <View style={styles.emptyActionContainer}>
+                  <Text style={styles.emptyEmoji}>📭</Text>
                   <Text style={styles.emptyActionText}>오늘 기록된 안부가 없어요.</Text>
                 </View>
               )}
             </View>
-
-            <Pressable style={styles.historyBtn} onPress={() => router.push('/two')}>
-              <Text style={styles.historyBtnText}>우리가족 전체 기록 보기 〉</Text>
-            </Pressable>
           </View>
         )}
       </ScrollView>
@@ -475,29 +500,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
-  summaryContainer: {
-    backgroundColor: colors.cardBg,
-    borderRadius: 24,
-    padding: spacing.lg,
-    alignItems: 'center',
-    marginVertical: spacing.lg,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  mainContainer: {
+    flex: 1,
+    paddingTop: spacing.md,
   },
-  topStatus: {
+  topStatusContainer: {
     alignItems: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg,
     width: '100%',
   },
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderRadius: 16,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   statusText: {
     fontSize: 15,
@@ -509,88 +531,107 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   pendingText: {
-    fontSize: 15,
+    fontSize: 14,
     color: colors.textSecondary,
     marginBottom: spacing.xs,
   },
   flowerContainer: {
-    marginVertical: spacing.md,
+    alignItems: 'center',
+    marginBottom: spacing.xl,
   },
   largeFlower: {
     fontSize: 64,
   },
   actionsSection: {
     width: '100%',
-    marginTop: spacing.md,
+    paddingBottom: spacing.xxl,
   },
-  actionsTitle: {
-    fontSize: 16,
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    marginBottom: spacing.sm,
+  },
+  sectionTitle: {
+    fontSize: 18,
     fontWeight: 'bold',
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
-  actionList: {
-    width: '100%',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fafafa',
-    borderRadius: 12,
-    padding: spacing.md,
-    marginBottom: spacing.sm,
-    borderWidth: 1,
-    borderColor: '#eee',
-  },
-  actionIconWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#eee',
-    marginRight: spacing.sm,
-  },
-  actionRowContent: {
-    flex: 1,
-  },
-  actionRowTitle: {
+  viewHistoryText: {
     fontSize: 14,
     fontWeight: '600',
+    color: colors.primary,
+  },
+  actionsList: {
+    gap: spacing.md,
+  },
+  actionCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.cardBg,
+    borderRadius: 20,
+    padding: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  actionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: colors.pending,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.md,
+  },
+  actionContent: {
+    flex: 1,
+  },
+  actionLabel: {
+    fontSize: 15,
     color: colors.textPrimary,
+    fontWeight: '600',
+  },
+  actionTime: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  playButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionRowMessage: {
     fontSize: 13,
     color: colors.textSecondary,
     marginTop: 2,
   },
-  actionRowTime: {
-    fontSize: 12,
-    color: colors.textLight,
-    marginTop: 2,
-  },
   emptyActionContainer: {
-    padding: spacing.xl,
+    flex: 1,
     alignItems: 'center',
-    backgroundColor: '#fafafa',
-    borderRadius: 12,
+    justifyContent: 'center',
+    padding: spacing.xl,
+    backgroundColor: colors.cardBg,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  emptyEmoji: {
+    fontSize: 40,
+    marginBottom: spacing.sm,
   },
   emptyActionText: {
     fontSize: 14,
     color: colors.textSecondary,
-  },
-  historyBtn: {
-    marginTop: spacing.xl,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 20,
-  },
-  historyBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.primary,
   },
 });
