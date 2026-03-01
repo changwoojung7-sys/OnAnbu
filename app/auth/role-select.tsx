@@ -1,11 +1,11 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
-import { spacing, typography, borderRadius, softShadow } from '@/constants/theme';
+import { borderRadius, softShadow, spacing, typography } from '@/constants/theme';
 
 interface RoleOption {
     id: 'guardian' | 'parent' | 'invited';
@@ -19,22 +19,22 @@ const ROLE_OPTIONS: RoleOption[] = [
     {
         id: 'guardian',
         icon: 'heart',
-        title: '부모님을 케어하러 왔어요',
-        description: '가족 그룹을 만들고 부모님을 초대해요',
+        title: '주 케어자로 시작할게요',
+        description: '가족 그룹을 처음 만들고 케어대상을 초대해요',
         route: '/auth/signup?role=guardian',
     },
     {
         id: 'parent',
         icon: 'gift',
-        title: '자녀에게 초대받았어요',
-        description: '초대코드를 입력하고 안부를 받아요',
+        title: '케어대상으로 초대받았어요',
+        description: '초대코드를 입력하고 가족들과 안부를 나눠요',
         route: '/auth/enter-code?type=parent',
     },
     {
         id: 'invited',
         icon: 'people',
-        title: '가족으로 초대받았어요',
-        description: '함께 부모님을 케어해요',
+        title: '함께 케어할 보조 케어자예요',
+        description: '가족 그룹에 합류하여 함께 안부를 확인해요',
         route: '/auth/enter-code?type=guardian',
     },
 ];
