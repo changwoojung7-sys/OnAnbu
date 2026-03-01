@@ -5,12 +5,13 @@ import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionCard } from '@/components/care';
 import { colors } from '@/constants/Colors';
+import careMessages from '@/constants/careMessages.json';
 import { strings } from '@/constants/strings';
 import { borderRadius, commonStyles, spacing, typography } from '@/constants/theme';
 import { AdEventType, RewardedAd, RewardedAdEventType } from '@/lib/admob';
@@ -44,9 +45,41 @@ export default function CareScreen() {
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
     const [isRecording, setIsRecording] = useState(false);
 
-    useEffect(() => {
-        fetchConnectedParent();
-    }, [user?.id]);
+    // 카테고리 상태 추가
+    const CATEGORIES = [
+        { id: 'parents', label: '부모님' },
+        { id: 'grandparents', label: '조부모님' },
+        { id: 'children', label: '자녀' },
+        { id: 'spouse', label: '배우자' },
+        { id: 'sibling', label: '형제/자매' },
+        { id: 'friend', label: '친구' },
+        { id: 'colleague', label: '동료' },
+        { id: 'other', label: '기타' },
+    ];
+    const [selectedCategory, setSelectedCategory] = useState<string>('other');
+
+    const generateRandomMessage = (cat?: string) => {
+        const targetCategory = cat || selectedCategory;
+        const messages = (careMessages as any)[targetCategory];
+
+        if (messages && messages.length > 0) {
+            const randomMsg = messages[Math.floor(Math.random() * messages.length)];
+            setTextMessage(randomMsg);
+        } else {
+            setTextMessage('오늘 하루도 무사히 보내셨길 바랍니다. 편안한 밤 되세요!');
+        }
+    };
+
+    const handleCategorySelect = (catId: string) => {
+        setSelectedCategory(catId);
+        generateRandomMessage(catId);
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            fetchConnectedParent();
+        }, [user?.id, selectedParent?.id])
+    );
 
     const fetchConnectedParent = async () => {
         if (!user?.id) return;
@@ -60,6 +93,8 @@ export default function CareScreen() {
                     .eq('parent_id', selectedParent.id)
                     .single();
                 if (group) setGroupId(group.id);
+
+                // 관계 정보 가져오기 제거 (수동 카테고리 선택으로 대체)
                 return;
             }
             const { data: memberships } = await supabase
@@ -79,6 +114,13 @@ export default function CareScreen() {
                 setGroupId(latestGroup.id);
                 setParentId(latestGroup.parent_id);
                 setParentName((latestGroup.profiles as any)?.name || '어머니');
+
+                const { data: member } = await supabase
+                    .from('family_members')
+                    .select('relationship_label')
+                    .eq('group_id', latestGroup.id)
+                    .eq('guardian_id', user.id)
+                    .single();
             }
         } catch (error) {
             console.error('[Care] 부모님 정보 조회 에러:', error);
@@ -266,10 +308,6 @@ export default function CareScreen() {
     };
 
     const handleTextSubmit = () => {
-        if (!textMessage.trim()) {
-            Alert.alert('알림', '메시지를 입력해주세요.');
-            return;
-        }
         setIsTextModalVisible(false);
         startAdRewardFlow('check_in', textMessage, undefined);
     };
@@ -379,12 +417,13 @@ export default function CareScreen() {
         }
 
         if (type === 'check_in') {
+            generateRandomMessage();
             setIsTextModalVisible(true);
         } else if (type === 'voice_cheer') {
             setIsMediaModalVisible(true);
         }
 
-    }, [parentId, groupId]);
+    }, [parentId, groupId, selectedCategory]);
 
     return (
         <SafeAreaView style={commonStyles.container} edges={['top']}>
@@ -396,25 +435,27 @@ export default function CareScreen() {
                 <View style={styles.header}>
                     <Text style={styles.title}>{strings.care.title}</Text>
                     <Text style={styles.subtitle}>
-                        {parentName}께 마음을 전해보세요
+                        {parentName}님께 마음을 전해보세요
                     </Text>
                 </View>
 
                 {!parentId && (
                     <View style={styles.warningContainer}>
                         <Text style={styles.warningText}>
-                            ⚠️ 연결된 부모님이 없습니다. '부모님 초대' 기능을 이용해주세요.
+                            ⚠️ 연결된 케어대상이 없습니다. '가족 관리' 탭에서 초대를 먼저 진행해주세요.
                         </Text>
                     </View>
                 )}
 
                 <ActionCard
                     type="voice_cheer"
+                    parentName={parentName}
                     isCompleted={false}
                     onPress={() => handleActionPress('voice_cheer')}
                 />
                 <ActionCard
                     type="check_in"
+                    parentName={parentName}
                     isCompleted={false}
                     onPress={() => handleActionPress('check_in')}
                 />
@@ -439,18 +480,40 @@ export default function CareScreen() {
                                 <Ionicons name="close" size={24} color={colors.textSecondary} />
                             </TouchableOpacity>
                         </View>
-                        <Text style={styles.modalSubtitle}>{parentName}님께 전할 짧은 메시지를 남겨보세요.</Text>
+                        <Text style={styles.modalSubtitle}>{parentName}님께 전할 위로와 안부 메시지입니다.</Text>
 
-                        <TextInput
-                            style={styles.textInput}
-                            placeholder="오늘 점심은 드셨어요?"
-                            placeholderTextColor={colors.textLight}
-                            value={textMessage}
-                            onChangeText={setTextMessage}
-                            multiline
-                            maxLength={100}
-                        />
-                        <Text style={styles.charCount}>{textMessage.length}/100자</Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoryScroll} contentContainerStyle={styles.categoryContent}>
+                            {CATEGORIES.map(cat => (
+                                <TouchableOpacity
+                                    key={cat.id}
+                                    style={[styles.categoryChip, selectedCategory === cat.id && styles.categoryChipSelected]}
+                                    onPress={() => handleCategorySelect(cat.id)}
+                                >
+                                    <Text style={[styles.categoryChipText, selectedCategory === cat.id && styles.categoryChipTextSelected]}>
+                                        {cat.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+
+                        <View style={styles.messageDisplayBox}>
+                            <TextInput
+                                style={styles.messageDisplayText}
+                                value={textMessage}
+                                onChangeText={setTextMessage}
+                                multiline
+                                textAlign="center"
+                                placeholder="안부 메시지를 입력해주세요"
+                                placeholderTextColor={colors.textLight}
+                            />
+                        </View>
+
+                        <View style={styles.refreshContainer}>
+                            <TouchableOpacity style={styles.refreshBtn} onPress={() => generateRandomMessage()}>
+                                <Ionicons name="refresh" size={18} color={colors.textSecondary} />
+                                <Text style={styles.refreshBtnText}>다른 문구 보기</Text>
+                            </TouchableOpacity>
+                        </View>
 
                         <TouchableOpacity style={styles.submitBtn} onPress={handleTextSubmit}>
                             <Ionicons name="gift" size={20} color="#fff" style={{ marginRight: 6 }} />
@@ -573,21 +636,48 @@ const styles = StyleSheet.create({
     modalTitle: { ...typography.h2, color: colors.textPrimary },
     modalSubtitle: { ...typography.body, color: colors.textSecondary, marginBottom: spacing.lg },
 
-    textInput: {
+    messageDisplayBox: {
         backgroundColor: '#f8f9fa',
         borderRadius: borderRadius.md,
         padding: spacing.md,
-        minHeight: 120,
-        textAlignVertical: 'top',
-        fontSize: 16,
-        color: colors.textPrimary,
+        minHeight: 140,
+        justifyContent: 'center',
+        alignItems: 'center',
         borderWidth: 1,
         borderColor: colors.borderLight,
-        marginBottom: 8,
+        marginBottom: spacing.xs,
     },
-    charCount: {
-        ...typography.small, color: colors.textLight, textAlign: 'right', marginBottom: spacing.lg
+    messageDisplayText: {
+        width: '100%',
+        minHeight: 100,
+        fontSize: 18,
+        color: colors.textPrimary,
+        textAlign: 'center',
+        textAlignVertical: 'center',
+        lineHeight: 28,
+        fontWeight: '500',
     },
+    refreshContainer: {
+        alignItems: 'flex-end',
+        marginBottom: spacing.lg,
+    },
+    refreshBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        backgroundColor: colors.cardBg,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: colors.border,
+    },
+    refreshBtnText: {
+        fontSize: 14,
+        color: colors.textSecondary,
+        marginLeft: 4,
+        fontWeight: '500',
+    },
+
     submitBtn: {
         backgroundColor: colors.primary, borderRadius: borderRadius.lg, paddingVertical: spacing.md, flexDirection: 'row', justifyContent: 'center', alignItems: 'center'
     },
@@ -648,6 +738,35 @@ const styles = StyleSheet.create({
     dashedBoxTextSub: {
         ...typography.small,
         color: colors.textLight,
+    },
+    categoryScroll: {
+        maxHeight: 40,
+        marginBottom: spacing.md,
+    },
+    categoryContent: {
+        paddingHorizontal: spacing.sm,
+    },
+    categoryChip: {
+        paddingHorizontal: spacing.md,
+        paddingVertical: 6,
+        borderRadius: 20,
+        backgroundColor: '#f5f5f5',
+        marginRight: spacing.sm,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    categoryChipSelected: {
+        backgroundColor: colors.primary + '15',
+        borderColor: colors.primary,
+    },
+    categoryChipText: {
+        ...typography.small,
+        color: colors.textSecondary,
+        fontWeight: '500',
+    },
+    categoryChipTextSelected: {
+        color: colors.primary,
+        fontWeight: '700',
     },
 
 });

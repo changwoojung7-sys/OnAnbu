@@ -2,17 +2,26 @@ import { Ionicons } from '@expo/vector-icons';
 import { Audio, ResizeMode, Video } from 'expo-av';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, Image, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { colors } from '@/constants/Colors';
 import { strings } from '@/constants/strings';
 import { borderRadius, spacing, typography } from '@/constants/theme';
+import { AdEventType, RewardedAd, RewardedAdEventType } from '@/lib/admob';
 import { supabase } from '@/lib/supabase';
 import { ActionLog } from '@/lib/types';
+import { useActionStore } from '@/stores/actionStore';
 import { useAuthStore } from '@/stores/authStore';
+
+const adUnitId = __DEV__
+    ? (Platform.OS === 'ios' ? 'ca-app-pub-3940256099942544/1712485313' : 'ca-app-pub-3940256099942544/5224354917')
+    : 'ca-app-pub-2810872681064029/3833978077';
 
 interface HistoryFeedProps {
     hideHeader?: boolean;
+    headerTitle?: string;
+    showBackButton?: boolean;
+    onBackPress?: () => void;
 }
 
 const MOOD_MAP: Record<string, { emoji: string; label: string }> = {
@@ -22,7 +31,12 @@ const MOOD_MAP: Record<string, { emoji: string; label: string }> = {
     not_good: { emoji: '😔', label: '좋지 않아요' },
 };
 
-export function HistoryFeed({ hideHeader = false }: HistoryFeedProps) {
+export function HistoryFeed({
+    hideHeader = false,
+    headerTitle,
+    showBackButton = false,
+    onBackPress
+}: HistoryFeedProps) {
     const { user, selectedParent } = useAuthStore();
     const [actions, setActions] = useState<ActionLog[]>([]);
     const [moodByDate, setMoodByDate] = useState<Record<string, string>>({});
@@ -32,6 +46,15 @@ export function HistoryFeed({ hideHeader = false }: HistoryFeedProps) {
     // Audio Playback state
     const [sound, setSound] = useState<Audio.Sound | null>(null);
     const [playingId, setPlayingId] = useState<string | null>(null);
+
+    // PlayMovie state
+    const [isMoviePlaying, setIsMoviePlaying] = useState(false);
+    const [movieIndex, setMovieIndex] = useState(0);
+    const [isLoadingAd, setIsLoadingAd] = useState(false);
+    const [isPlayingPaused, setIsPlayingPaused] = useState(false);
+    const [bgmSound, setBgmSound] = useState<Audio.Sound | null>(null);
+
+    const { addAction } = useActionStore(); // Add Ad logic variables here
 
     // 현재 연동된 대표 부모님 / 그룹 파악
     const parentName = selectedParent?.name || '부모님';
@@ -177,6 +200,137 @@ export function HistoryFeed({ hideHeader = false }: HistoryFeedProps) {
         setRefreshing(true);
         fetchBidirectionalHistory();
     };
+
+    // PlayMovie 기능
+    const startPlayMovie = async () => {
+        if (actions.length === 0) {
+            Alert.alert('알림', '아직 모아볼 추억이 없습니다.');
+            return;
+        }
+        setMovieIndex(0);
+        setIsMoviePlaying(true);
+        setIsPlayingPaused(false);
+
+        // BGM Load and Play
+        try {
+            if (!bgmSound) {
+                const { sound } = await Audio.Sound.createAsync(
+                    require('../../public/bgm_Anbu.mp3'),
+                    { isLooping: true, volume: 0.5 }
+                );
+                setBgmSound(sound);
+                await sound.playAsync();
+            } else {
+                await bgmSound.setPositionAsync(0);
+                await bgmSound.playAsync();
+            }
+        } catch (e) {
+            console.log('BGM Load Error (ignored):', e);
+        }
+    };
+
+    const handlePlayMovieClick = () => {
+        if (actions.length === 0) {
+            Alert.alert('알림', '아직 모아볼 추억이 없습니다.');
+            return;
+        }
+
+        if (Platform.OS === 'web') {
+            startPlayMovie();
+            return;
+        }
+
+        setIsLoadingAd(true);
+        const rewarded = RewardedAd.createForAdRequest(adUnitId, {
+            requestNonPersonalizedAdsOnly: true,
+            keywords: ['family', 'memory', 'photo', 'history'],
+        });
+
+        const unsubscribeLoaded = rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => {
+            setIsLoadingAd(false);
+            rewarded.show();
+        });
+
+        const unsubscribeEarned = rewarded.addAdEventListener(
+            RewardedAdEventType.EARNED_REWARD,
+            () => {
+                startPlayMovie();
+            }
+        );
+
+        const unsubscribeClosed = rewarded.addAdEventListener(AdEventType.CLOSED, () => {
+            setIsLoadingAd(false);
+            unsubscribeLoaded();
+            unsubscribeEarned();
+            unsubscribeClosed();
+            unsubscribeError();
+        });
+
+        const unsubscribeError = rewarded.addAdEventListener(AdEventType.ERROR, (error) => {
+            setIsLoadingAd(false);
+            Alert.alert(
+                '광고 오류',
+                '광고를 불러오는 중 오류가 발생했습니다. 추억 앨범을 바로 보여드릴게요.',
+                [{ text: '확인', onPress: startPlayMovie }]
+            );
+            unsubscribeLoaded();
+            unsubscribeEarned();
+            unsubscribeClosed();
+            unsubscribeError();
+        });
+
+        rewarded.load();
+    };
+
+    // 슬라이드 타이머 로직
+    React.useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (isMoviePlaying && !isPlayingPaused) {
+            timer = setTimeout(() => {
+                if (movieIndex < actions.length - 1) {
+                    setMovieIndex(movieIndex + 1);
+                } else {
+                    setIsMoviePlaying(false);
+                }
+            }, 3500); // 3.5초 간격 전환
+        }
+        return () => clearTimeout(timer);
+    }, [isMoviePlaying, movieIndex, isPlayingPaused, actions.length]);
+
+    // BGM 재생/일시정지 연동 로직
+    React.useEffect(() => {
+        const manageBgm = async () => {
+            if (!bgmSound) return;
+
+            if (!isMoviePlaying) {
+                await bgmSound.pauseAsync();
+                return;
+            }
+
+            const currentAction = actions[movieIndex];
+            const isVideo = (currentAction?.type === 'video' || (currentAction?.type === 'message' && currentAction.content_url?.endsWith('.mp4'))) && !!currentAction.content_url;
+            const isAudio = (currentAction?.type === 'voice_cheer' || (currentAction?.type === 'message' && currentAction.content_url?.endsWith('.m4a'))) && !!currentAction.content_url;
+
+            if (isVideo || isAudio) {
+                // 영상/음성일 땐 BGM 일시정지
+                await bgmSound.pauseAsync();
+            } else {
+                if (!isPlayingPaused) {
+                    await bgmSound.playAsync();
+                } else {
+                    await bgmSound.pauseAsync();
+                }
+            }
+        };
+        manageBgm();
+    }, [isMoviePlaying, movieIndex, isPlayingPaused, bgmSound, actions]);
+
+    // 언마운트 시 BGM 정리
+    React.useEffect(() => {
+        return () => {
+            if (bgmSound) bgmSound.unloadAsync();
+        };
+    }, [bgmSound]);
 
     const monthlyCount = useMemo(() => {
         const now = new Date();
@@ -393,37 +547,204 @@ export function HistoryFeed({ hideHeader = false }: HistoryFeedProps) {
     };
 
     return (
-        <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        >
-            {!hideHeader && (
-                <View style={styles.header}>
-                    <Text style={styles.title}>{strings.history.title}</Text>
-                </View>
-            )}
+        <View style={{ flex: 1 }}>
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+            >
+                {!hideHeader && (
+                    <View style={styles.headerRow}>
+                        <View style={styles.headerLeft}>
+                            {showBackButton && onBackPress && (
+                                <TouchableOpacity onPress={onBackPress} style={styles.backBtn}>
+                                    <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                                </TouchableOpacity>
+                            )}
+                            <Text style={styles.title}>{headerTitle || strings.history.title}</Text>
+                        </View>
+                        <View style={styles.headerRight}>
+                            <TouchableOpacity style={styles.playMovieBtn} onPress={handlePlayMovieClick}>
+                                <Ionicons name="film-outline" size={16} color={colors.primary} />
+                                <Text style={styles.playMovieText}>추억 모아보기</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.refreshIconBtn} onPress={onRefresh}>
+                                <Ionicons name="refresh" size={20} color={colors.textSecondary} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                )}
 
-            <View style={styles.summaryCard}>
-                <Text style={styles.summaryEmoji}>💕</Text>
-                <Text style={styles.summaryText}>
-                    이번 달, 우리 가족은 총 {monthlyCount}번 마음을 전했어요!
-                </Text>
-            </View>
+                <View style={styles.summaryCard}>
+                    <Text style={styles.summaryEmoji}>💕</Text>
+                    <Text style={styles.summaryText}>
+                        이번 달, 우리 가족은 총 {monthlyCount}번 마음을 전했어요!
+                    </Text>
+                </View>
 
-            {actions.length > 0 ? (
-                <View style={styles.listContainer}>
-                    {actions.map(renderActionItem)}
+                {actions.length > 0 ? (
+                    <View style={styles.listContainer}>
+                        {actions.map(renderActionItem)}
+                    </View>
+                ) : (
+                    <View style={styles.emptyContainer}>
+                        <Text style={styles.emptyEmoji}>📝</Text>
+                        <Text style={styles.emptyText}>{strings.history.emptyState}</Text>
+                        <Text style={styles.emptySubText}>{strings.history.emptyStateSub}</Text>
+                    </View>
+                )}
+            </ScrollView>
+
+            {/* Play Movie Modal */}
+            <Modal
+                visible={isMoviePlaying}
+                animationType="fade"
+                transparent={false}
+                onRequestClose={() => {
+                    setIsMoviePlaying(false);
+                    if (bgmSound) bgmSound.pauseAsync();
+                }}
+            >
+                <View style={styles.movieContainer}>
+                    {/* 상단 프로그레스 바 영역 */}
+                    <View style={styles.movieHeader}>
+                        <View style={styles.progressContainer}>
+                            {actions.map((_, idx) => (
+                                <View
+                                    key={idx}
+                                    style={[
+                                        styles.progressSegment,
+                                        idx < movieIndex ? styles.progressSegmentPassed :
+                                            idx === movieIndex ? styles.progressSegmentActive : null
+                                    ]}
+                                />
+                            ))}
+                        </View>
+                        <TouchableOpacity
+                            style={styles.movieCloseBtn}
+                            onPress={() => {
+                                setIsMoviePlaying(false);
+                                if (bgmSound) bgmSound.pauseAsync();
+                            }}
+                        >
+                            <Ionicons name="close" size={28} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* 메인 슬라이드 콘텐츠 - Full Screen */}
+                    <View style={[styles.movieContent, { paddingHorizontal: 0, paddingVertical: 0 }]}>
+                        {actions.length > 0 && isMoviePlaying && (() => {
+                            const item = actions[movieIndex];
+                            const isVideo = (item.type === 'video' || (item.type === 'message' && item.content_url?.endsWith('.mp4'))) && !!item.content_url;
+                            const isAudio = (item.type === 'voice_cheer' || (item.type === 'message' && item.content_url?.endsWith('.m4a'))) && !!item.content_url;
+                            const isPhoto = (item.type === 'photo' || (item.type === 'message' && !item.content_url?.endsWith('.mp4') && !item.content_url?.endsWith('.m4a'))) && !!item.content_url;
+                            const hasText = !!item.message;
+
+                            const typedItem = item as any;
+                            const senderName = (typedItem.type === 'message' || (typedItem.type === 'check_in' && typedItem.message === '일어났어요! ☀️'))
+                                ? (typedItem.parent?.name || '부모님')
+                                : (typedItem.guardian?.name || '가족');
+
+                            return (
+                                <View style={{ flex: 1, backgroundColor: '#000', width: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                                    {/* 상단 작성자 및 시간 정보 */}
+                                    <View style={{
+                                        position: 'absolute',
+                                        top: 20,
+                                        left: 20,
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        zIndex: 20,
+                                        backgroundColor: 'rgba(0,0,0,0.5)',
+                                        paddingHorizontal: 12,
+                                        paddingVertical: 6,
+                                        borderRadius: 20,
+                                    }}>
+                                        <Ionicons name="person-circle" size={24} color="#fff" style={{ marginRight: 6 }} />
+                                        <View>
+                                            <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>{senderName}</Text>
+                                            <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 12 }}>{formatDate(item.created_at)} · {formatTime(item.created_at)}</Text>
+                                        </View>
+                                    </View>
+
+                                    {isPhoto && item.content_url && (
+                                        <Image source={{ uri: item.content_url }} style={{ flex: 1, width: '100%', height: '100%' }} resizeMode="contain" />
+                                    )}
+                                    {isVideo && item.content_url && (
+                                        <View style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                                            <Video
+                                                source={{ uri: item.content_url }}
+                                                style={{ width: '100%', height: '100%', alignSelf: 'center' }}
+                                                useNativeControls={false}
+                                                resizeMode={ResizeMode.CONTAIN}
+                                                shouldPlay={!isPlayingPaused}
+                                                isLooping={true}
+                                            />
+                                        </View>
+                                    )}
+                                    {isAudio && item.content_url && (
+                                        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                                            <Ionicons name="mic-circle" size={120} color={colors.primary} />
+                                            <Text style={{ color: '#fff', marginTop: 16, fontSize: 18, fontWeight: '500' }}>음성 메시지 듣는 중...</Text>
+                                            <Video
+                                                source={{ uri: item.content_url }}
+                                                style={{ width: 0, height: 0 }}
+                                                useNativeControls={false}
+                                                shouldPlay={!isPlayingPaused}
+                                            />
+                                        </View>
+                                    )}
+                                    {hasText && (
+                                        <View style={{
+                                            position: 'absolute',
+                                            bottom: 120,
+                                            backgroundColor: 'rgba(0,0,0,0.65)',
+                                            padding: 24,
+                                            borderRadius: 12,
+                                            width: '85%',
+                                            alignItems: 'center'
+                                        }}>
+                                            <Text style={{ color: '#fff', fontSize: 20, textAlign: 'center', lineHeight: 30 }}>"{item.message}"</Text>
+                                        </View>
+                                    )}
+                                </View>
+                            );
+                        })()}
+                    </View>
+
+                    {/* 하단 투명 컨트롤 */}
+                    <View style={styles.movieControls}>
+                        <TouchableOpacity
+                            style={styles.movieControlBtn}
+                            onPress={() => setMovieIndex(prev => Math.max(0, prev - 1))}
+                        >
+                            <Ionicons name="chevron-back" size={32} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.movieControlBtn}
+                            onPress={() => setIsPlayingPaused(!isPlayingPaused)}
+                        >
+                            <Ionicons name={isPlayingPaused ? "play" : "pause"} size={32} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.movieControlBtn}
+                            onPress={() => setMovieIndex(prev => Math.min(actions.length - 1, prev + 1))}
+                        >
+                            <Ionicons name="chevron-forward" size={32} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            ) : (
-                <View style={styles.emptyContainer}>
-                    <Text style={styles.emptyEmoji}>📝</Text>
-                    <Text style={styles.emptyText}>{strings.history.emptyState}</Text>
-                    <Text style={styles.emptySubText}>{strings.history.emptyStateSub}</Text>
+            </Modal>
+
+            {/* Loading Ad Modal */}
+            <Modal visible={isLoadingAd} transparent={true} animationType="fade">
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}>
+                    <ActivityIndicator size="large" color="#ffffff" />
+                    <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 16, fontWeight: '600' }}>추억을 불러오는 중입니다...</Text>
                 </View>
-            )}
-        </ScrollView>
+            </Modal>
+        </View>
     );
 }
 
@@ -434,8 +755,40 @@ const styles = StyleSheet.create({
     scrollContent: {
         padding: spacing.lg,
     },
-    header: {
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: spacing.lg,
+    },
+    headerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    backBtn: {
+        paddingRight: spacing.sm,
+    },
+    headerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    playMovieBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.primary + '15',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 20,
+        marginRight: spacing.sm,
+    },
+    playMovieText: {
+        ...typography.small,
+        color: colors.primary,
+        fontWeight: '600',
+        marginLeft: 4,
+    },
+    refreshIconBtn: {
+        padding: spacing.xs,
     },
     title: {
         ...typography.h1,
@@ -598,5 +951,58 @@ const styles = StyleSheet.create({
     emptySubText: {
         ...typography.small,
         color: colors.textLight,
+    },
+    // Movie Modal Styles
+    movieContainer: {
+        flex: 1,
+        backgroundColor: '#000',
+    },
+    movieHeader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        paddingTop: 50,
+        paddingHorizontal: spacing.md,
+        zIndex: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    progressContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        height: 4,
+        gap: 4,
+        marginRight: spacing.lg,
+    },
+    progressSegment: {
+        flex: 1,
+        height: '100%',
+        backgroundColor: 'rgba(255,255,255,0.3)',
+        borderRadius: 2,
+    },
+    progressSegmentPassed: {
+        backgroundColor: 'rgba(255,255,255,0.6)',
+    },
+    progressSegmentActive: {
+        backgroundColor: '#fff',
+    },
+    movieCloseBtn: {
+        padding: spacing.xs,
+    },
+    movieContent: {
+        flex: 1,
+        justifyContent: 'center',
+        paddingHorizontal: spacing.md,
+    },
+    movieControls: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        alignItems: 'center',
+        paddingBottom: 40,
+        paddingHorizontal: spacing.xl,
+    },
+    movieControlBtn: {
+        padding: spacing.md,
     },
 });

@@ -1,18 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { colors } from '@/constants/Colors';
-import { borderRadius, spacing, typography, softShadow } from '@/constants/theme';
 import { strings } from '@/constants/strings';
+import { borderRadius, softShadow, spacing, typography } from '@/constants/theme';
 import { ActionType } from '@/lib/types';
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 interface ActionCardProps {
     type: ActionType;
     isCompleted?: boolean;
+    parentName?: string;
     onPress: () => void;
 }
 
-export function ActionCard({ type, isCompleted = false, onPress }: ActionCardProps) {
+export function ActionCard({ type, isCompleted = false, parentName, onPress }: ActionCardProps) {
     const isVoice = type === 'voice_cheer';
 
     const config: Record<string, { icon: any; title: string; description: string; buttonLabel: string }> = {
@@ -25,7 +26,7 @@ export function ActionCard({ type, isCompleted = false, onPress }: ActionCardPro
         check_in: {
             icon: 'heart-outline' as const,
             title: strings.care.checkInTitle,
-            description: strings.care.checkInDesc,
+            description: parentName ? `${parentName}님께 안부를 대신 전해드려요.` : strings.care.checkInDesc,
             buttonLabel: strings.care.adButton15s,
         },
         message: {
@@ -65,7 +66,9 @@ export function ActionCard({ type, isCompleted = false, onPress }: ActionCardPro
                     >
                         <Text style={styles.buttonText}>{buttonLabel}</Text>
                     </Pressable>
-                    <Text style={styles.caption}>{strings.care.adCaption}</Text>
+                    <Text style={styles.caption}>
+                        {parentName ? `${parentName}님께는 광고가 보이지 않아요.` : strings.care.adCaption}
+                    </Text>
                 </>
             ) : (
                 <View style={styles.completedBadge}>
