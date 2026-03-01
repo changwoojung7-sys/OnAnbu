@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface FamilyMember {
@@ -275,37 +275,54 @@ export default function FamilyManagementScreen() {
     };
 
     const handleRemoveMember = (group_id: string, guardian_id: string, name: string, isSelf: boolean) => {
-        Alert.alert(
-            isSelf ? '나가기' : '내보내기',
-            isSelf ? '단독으로 결합된 가족 그룹에서 나가시겠습니까?\n이 동작은 복구할 수 없습니다.' : `${name}님을 가족 그룹에서 내보내시겠습니까?`,
-            [
-                { text: '취소', style: 'cancel' },
-                {
-                    text: '확인',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            setLoading(true);
-                            const { data, error } = await supabase.rpc('remove_family_member', {
-                                p_group_id: group_id,
-                                p_guardian_id: guardian_id
-                            });
-                            if (error) throw error;
-                            if (data && data.success) {
-                                Alert.alert('성공', data.message);
-                                fetchFamilyData();
-                            } else {
-                                Alert.alert('오류', data?.message || '처리 중 오류가 발생했습니다.');
-                            }
-                        } catch (e: any) {
-                            Alert.alert('오류', e.message || '요청 처리 중 문제가 발생했습니다.');
-                        } finally {
-                            setLoading(false);
-                        }
+        const title = isSelf ? '나가기' : '내보내기';
+        const message = isSelf ? '단독으로 결합된 가족 그룹에서 나가시겠습니까?\n이 동작은 복구할 수 없습니다.' : `${name}님을 가족 그룹에서 내보내시겠습니까?`;
+
+        const executeRemoval = async () => {
+            try {
+                setLoading(true);
+                const { data, error } = await supabase.rpc('remove_family_member', {
+                    p_group_id: group_id,
+                    p_guardian_id: guardian_id
+                });
+                if (error) throw error;
+                if (data && data.success) {
+                    if (Platform.OS === 'web') {
+                        window.alert(data.message);
+                    } else {
+                        Alert.alert('성공', data.message);
+                    }
+                    fetchFamilyData();
+                } else {
+                    const errorMsg = data?.message || '처리 중 오류가 발생했습니다.';
+                    if (Platform.OS === 'web') {
+                        window.alert(errorMsg);
+                    } else {
+                        Alert.alert('오류', errorMsg);
                     }
                 }
-            ]
-        );
+            } catch (e: any) {
+                const eMsg = e.message || '요청 처리 중 문제가 발생했습니다.';
+                if (Platform.OS === 'web') {
+                    window.alert(eMsg);
+                } else {
+                    Alert.alert('오류', eMsg);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(`${title}\n\n${message}`)) {
+                executeRemoval();
+            }
+        } else {
+            Alert.alert(title, message, [
+                { text: '취소', style: 'cancel' },
+                { text: '확인', style: 'destructive', onPress: executeRemoval }
+            ]);
+        }
     };
 
     const renderMember = ({ item }: { item: FamilyMember }) => {
