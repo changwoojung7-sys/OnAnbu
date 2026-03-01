@@ -284,7 +284,7 @@ export default function FamilyManagementScreen() {
             <View style={styles.memberInfo}>
                 <Text style={styles.memberName}>{item.name}</Text>
                 <View style={styles.roleContainer}>
-                    <Text style={styles.memberRole}>부모님</Text>
+                    <Text style={styles.memberRole}>케어대상</Text>
                     {item.invite_codes && item.invite_codes.length > 0 && (
                         <Text style={styles.codeBadge}>#{item.invite_codes.join(', #')}</Text>
                     )}
@@ -321,7 +321,7 @@ export default function FamilyManagementScreen() {
                 <View style={styles.content}>
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
-                            <Text style={styles.sectionTitle}>부모님</Text>
+                            <Text style={styles.sectionTitle}>케어대상</Text>
                             <Pressable
                                 style={styles.addByCodeButton}
                                 onPress={() => setIsCodeModalVisible(true)}
@@ -333,12 +333,10 @@ export default function FamilyManagementScreen() {
                         {parents.length > 0 ? (
                             <View>
                                 <FlatList data={parents} renderItem={renderParent} keyExtractor={item => item.id} scrollEnabled={false} />
-                                <View style={styles.parentAddShortcut}>
-                                    <Text style={styles.parentAddShortcutText}>다른 부모님을 추가하시겠습니까?</Text>
-                                    <Pressable onPress={() => setIsCodeModalVisible(true)}>
-                                        <Text style={styles.parentAddShortcutLink}>초대코드 입력하기</Text>
-                                    </Pressable>
-                                </View>
+                                <Pressable style={styles.inviteParentButton} onPress={handleInviteParent}>
+                                    <Ionicons name="person-add" size={20} color={colors.textWhite} />
+                                    <Text style={styles.inviteButtonText}>신규 케어대상 초대코드 생성하기</Text>
+                                </Pressable>
                             </View>
                         ) : (
                             <View>
@@ -353,7 +351,7 @@ export default function FamilyManagementScreen() {
                                     </View>
                                 )}
                                 <View style={styles.emptyBox}>
-                                    <Text style={styles.emptyText}>연결된 부모님이 없습니다.</Text>
+                                    <Text style={styles.emptyText}>연결된 케어대상이 없습니다.</Text>
                                     <View style={styles.emptyButtonRow}>
                                         <Pressable style={styles.inviteButtonSmall} onPress={handleInviteParent}>
                                             <Text style={styles.inviteButtonTextSmall}>+ 직접 관리</Text>
@@ -451,9 +449,6 @@ const styles = StyleSheet.create({
     addByCodeButtonText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
     memberCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.cardBg, padding: 16, borderRadius: 12, marginBottom: 8, ...softShadow },
     parentCard: { borderColor: colors.action, borderWidth: 1 },
-    parentAddShortcut: { marginTop: 12, alignItems: 'center', gap: 4 },
-    parentAddShortcutText: { fontSize: 13, color: colors.textSecondary },
-    parentAddShortcutLink: { fontSize: 13, color: colors.primary, fontWeight: 'bold', textDecorationLine: 'underline' },
     avatarContainer: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
     avatarText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
     memberInfo: { flex: 1 },
@@ -467,6 +462,7 @@ const styles = StyleSheet.create({
     emptyButtonRow: { flexDirection: 'row', gap: 8 },
     inviteButtonSmall: { paddingVertical: 8, paddingHorizontal: 16, backgroundColor: colors.primary, borderRadius: 20 },
     inviteButtonTextSmall: { color: 'white', fontSize: 14, fontWeight: '600' },
+    inviteParentButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.action, padding: 16, borderRadius: 12, marginTop: 12, gap: 8, ...softShadow },
     inviteButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primary, padding: 16, borderRadius: 12, marginTop: 12, gap: 8, ...softShadow },
     inviteButtonText: { color: 'white', fontSize: 16, fontWeight: '600' },
     // Modal Styles
