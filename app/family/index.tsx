@@ -327,7 +327,7 @@ export default function FamilyManagementScreen() {
                                 onPress={() => setIsCodeModalVisible(true)}
                             >
                                 <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
-                                <Text style={styles.addByCodeButtonText}>코드로 추가</Text>
+                                <Text style={styles.addByCodeButtonText}>케어대상 초대코드로 등록</Text>
                             </Pressable>
                         </View>
                         {parents.length > 0 ? (
@@ -357,7 +357,7 @@ export default function FamilyManagementScreen() {
                                             <Text style={styles.inviteButtonTextSmall}>+ 직접 관리</Text>
                                         </Pressable>
                                         <Pressable style={[styles.inviteButtonSmall, { backgroundColor: colors.action }]} onPress={() => setIsCodeModalVisible(true)}>
-                                            <Text style={styles.inviteButtonTextSmall}>코드로 합류</Text>
+                                            <Text style={styles.inviteButtonTextSmall}>초대코드로 등록</Text>
                                         </Pressable>
                                     </View>
                                 </View>
@@ -393,7 +393,7 @@ export default function FamilyManagementScreen() {
                     <View style={styles.modalContent}>
                         <Text style={styles.modalTitle}>초대 코드 입력</Text>
                         <Text style={styles.modalSubtitle}>
-                            공유받은 6자리 초대 코드를 입력하여 새로운 가족 그룹에 합류하세요.
+                            보조 보호자로 초대받은 초대코드를 입력하세요.
                         </Text>
 
                         <TextInput
