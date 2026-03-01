@@ -218,9 +218,9 @@ export default function HomeScreen() {
         <View style={[styles.header, parents.length === 0 && { marginBottom: spacing.xl }]}>
           <Pressable onPress={() => { if (parents.length > 1) setParentModalVisible(true); }}>
             <ParentProfile
-              name={parents.length === 0 ? "부모님 연결 대기 중" : parentName}
+              name={parents.length === 0 ? "케어대상자 연결 대기 중" : parentName}
               avatarUrl={parentAvatar}
-              relationshipLabel={parents.length > 1 ? "다른 부모님 선택 ▼" : parents.length === 0 ? "아직 연결되지 않았어요" : "부모님"}
+              relationshipLabel={parents.length > 1 ? "다른 케어대상 선택 ▼" : parents.length === 0 ? "아직 연결되지 않았어요" : "케어대상"}
             />
           </Pressable>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
