@@ -1,73 +1,78 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ParentProfile, StatusCard } from '@/components/home';
+import { ParentProfile } from '@/components/home';
 import { colors } from '@/constants/Colors';
 import { commonStyles, spacing } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useActionStore } from '@/stores/actionStore';
 import { useAuthStore } from '@/stores/authStore';
-import { Modal, Text, TouchableOpacity } from 'react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { todayStatus } = useActionStore();
   const { selectedParent, parents, setSelectedParent } = useAuthStore();
 
-  const [isComplete, setIsComplete] = useState(false);
-  const [lastActionTime, setLastActionTime] = useState<string | null>(null);
-  const [lastActionType, setLastActionType] = useState<string | null>(null);
-  const [lastActionMessage, setLastActionMessage] = useState<string | null>(null);
-  const [lastActionUrl, setLastActionUrl] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [todayActions, setTodayActions] = useState<any[]>([]);
+  const [todayMood, setTodayMood] = useState<{ emoji: string, label: string } | null>(null);
+  const [isAwake, setIsAwake] = useState(false);
 
   const [isParentModalVisible, setParentModalVisible] = useState(false);
 
-  // 현재 선택된 부모님의 오늘 자 기상/안부 기록을 가져온다
-  useEffect(() => {
+  const fetchTodayData = async () => {
     if (!selectedParent) return;
+    setIsRefreshing(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const startOfDay = `${today}T00:00:00.000Z`;
 
-    const fetchTodayStatus = async () => {
-      try {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
+      const { data: actionsData } = await supabase
+        .from('action_logs')
+        .select('*, guardian:profiles!action_logs_guardian_id_fkey(name, avatar_url), parent:profiles!action_logs_parent_id_fkey(name, avatar_url)')
+        .eq('parent_id', selectedParent.id)
+        .gte('created_at', startOfDay)
+        .order('created_at', { ascending: false });
 
-        const { data, error } = await supabase
-          .from('action_logs')
-          .select('created_at, type, message, content_url')
-          .eq('parent_id', selectedParent.id)
-          .gte('created_at', today.toISOString())
-          .in('type', ['check_in', 'voice_cheer', 'message'])
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (error) throw error;
-
-        if (data && data.length > 0) {
-          setIsComplete(true);
-          setLastActionTime(data[0].created_at);
-          setLastActionType(data[0].type);
-          setLastActionMessage(data[0].message);
-          setLastActionUrl(data[0].content_url);
-        } else {
-          setIsComplete(false);
-          setLastActionTime(null);
-          setLastActionType(null);
-          setLastActionMessage(null);
-          setLastActionUrl(null);
-        }
-      } catch (e) {
-        console.error('Error fetching parent status:', e);
+      if (actionsData) {
+        setTodayActions(actionsData);
+        const awakeAction = actionsData.find((a: any) => a.type === 'check_in' && a.message === '일어났어요! ☀️');
+        setIsAwake(!!awakeAction);
+      } else {
+        setTodayActions([]);
+        setIsAwake(false);
       }
-    };
 
-    fetchTodayStatus();
-  }, [selectedParent?.id]);
+      const { data: moodData } = await supabase
+        .from('daily_status')
+        .select('mood')
+        .eq('parent_id', selectedParent.id)
+        .eq('status_date', today)
+        .single();
 
-  // [추가] 화면 포커스 시 부모님 프로필 최신화
+      if (moodData && moodData.mood) {
+        const MOOD_MAP: Record<string, { emoji: string, label: string }> = {
+          great: { emoji: '😊', label: '아주 좋아요' },
+          good: { emoji: '🙂', label: '좋아요' },
+          okay: { emoji: '😐', label: '그저 그래요' },
+          not_good: { emoji: '😔', label: '좋지 않아요' },
+        };
+        setTodayMood(MOOD_MAP[moodData.mood]);
+      } else {
+        setTodayMood(null);
+      }
+    } catch (e) {
+      console.log('fetchTodayData error', e);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // 화면 포커스 시 부모님 프로필 최신화 및 안부 데이터 조회
   useFocusEffect(
     useCallback(() => {
       const refreshParentProfiles = async () => {
@@ -121,7 +126,8 @@ export default function HomeScreen() {
       };
 
       refreshParentProfiles();
-    }, [])
+      fetchTodayData();
+    }, [selectedParent?.id])
   );
 
   const handleCarePress = useCallback(async () => {
@@ -139,6 +145,55 @@ export default function HomeScreen() {
   const parentName = selectedParent?.name || '어머니';
   const parentAvatar = selectedParent?.avatar_url || null;
 
+  const getActionIcon = (type: string) => {
+    if (type === 'voice_cheer') return 'mic';
+    if (type === 'video') return 'videocam';
+    if (type === 'photo') return 'image';
+    if (type === 'message') return 'chatbubble-ellipses';
+    return 'heart';
+  };
+
+  const formatTime = (isoString: string) => {
+    const date = new Date(isoString);
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const period = hours >= 12 ? '오후' : '오전';
+    const displayHours = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
+    return `${period} ${displayHours}:${minutes}`;
+  };
+
+  const renderActionItem = (action: any) => {
+    const isFromParent = action.type === 'message' || (action.type === 'check_in' && action.message === '일어났어요! ☀️');
+    const senderName = isFromParent ? (action.parent?.name || parentName) : (action.guardian?.name || '가족');
+
+    let actionLabel = '';
+    if (isFromParent) {
+      if (action.type === 'message') actionLabel = '사진/영상';
+      else actionLabel = '기상/안부';
+    } else {
+      if (action.type === 'voice_cheer') actionLabel = '음성 안부';
+      else if (action.type === 'video') actionLabel = '동영상 안부';
+      else if (action.type === 'photo') actionLabel = '사진 안부';
+      else actionLabel = '안부 체크';
+    }
+
+    return (
+      <Pressable key={action.id} style={styles.actionRow} onPress={() => router.push('/two')}>
+        <View style={styles.actionIconWrapper}>
+          <Ionicons name={getActionIcon(action.type)} size={20} color={colors.primary} />
+        </View>
+        <View style={styles.actionRowContent}>
+          <Text style={styles.actionRowTitle}>{senderName}님의 {actionLabel}</Text>
+          {action.message && action.message !== '일어났어요! ☀️' && (
+            <Text style={styles.actionRowMessage} numberOfLines={1}>"{action.message}"</Text>
+          )}
+          <Text style={styles.actionRowTime}>{formatTime(action.created_at)}</Text>
+        </View>
+        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+      </Pressable>
+    );
+  };
+
   return (
     <SafeAreaView style={commonStyles.container} edges={['top']}>
       <ScrollView
@@ -155,12 +210,21 @@ export default function HomeScreen() {
               relationshipLabel={parents.length > 1 ? "다른 부모님 선택 ▼" : parents.length === 0 ? "아직 연결되지 않았어요" : "부모님"}
             />
           </Pressable>
-          <Pressable
-            onPress={handleSettingsPress}
-            style={styles.settingsButton}
-          >
-            <Ionicons name="settings-outline" size={24} color={colors.textSecondary} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Pressable onPress={fetchTodayData} disabled={isRefreshing} style={({ pressed }) => [{ opacity: pressed ? 0.6 : 1, marginRight: 12 }]}>
+              {isRefreshing ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="refresh" size={24} color={colors.primary} />
+              )}
+            </Pressable>
+            <Pressable
+              onPress={handleSettingsPress}
+              style={styles.settingsButton}
+            >
+              <Ionicons name="settings-outline" size={24} color={colors.textSecondary} />
+            </Pressable>
+          </View>
         </View>
 
         {parents.length === 0 ? (
@@ -180,14 +244,48 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         ) : (
-          <StatusCard
-            isComplete={isComplete}
-            parentName={parentName}
-            lastActionTime={lastActionTime}
-            actionType={lastActionType}
-            actionMessage={lastActionMessage}
-            actionUrl={lastActionUrl}
-          />
+          <View style={styles.summaryContainer}>
+            {/* 부모님 기상 및 기분 상태 */}
+            <View style={styles.topStatus}>
+              {isAwake ? (
+                <View style={[styles.statusBadge, { backgroundColor: '#e8f5e9' }]}>
+                  <Text style={styles.statusText}>☀️ {parentName}님께서 기상하셨어요!</Text>
+                </View>
+              ) : (
+                <Text style={styles.pendingText}>아직 {parentName}님의 기상 소식이 없어요.</Text>
+              )}
+
+              {todayMood && (
+                <View style={[styles.statusBadge, { backgroundColor: '#e3f2fd', marginTop: spacing.sm }]}>
+                  <Text style={styles.statusEmoji}>{todayMood.emoji}</Text>
+                  <Text style={styles.statusText}>오늘 기분: {todayMood.label}</Text>
+                </View>
+              )}
+            </View>
+
+            {/* 꽃그림 */}
+            <View style={styles.flowerContainer}>
+              <Text style={styles.largeFlower}>🌸</Text>
+            </View>
+
+            {/* 오늘의 안부 목록 */}
+            <View style={styles.actionsSection}>
+              <Text style={styles.actionsTitle}>💌 오늘의 안부 ({todayActions.length})</Text>
+              {todayActions.length > 0 ? (
+                <View style={styles.actionList}>
+                  {todayActions.map(action => renderActionItem(action))}
+                </View>
+              ) : (
+                <View style={styles.emptyActionContainer}>
+                  <Text style={styles.emptyActionText}>오늘 기록된 안부가 없어요.</Text>
+                </View>
+              )}
+            </View>
+
+            <Pressable style={styles.historyBtn} onPress={() => router.push('/two')}>
+              <Text style={styles.historyBtnText}>우리가족 전체 기록 보기 〉</Text>
+            </Pressable>
+          </View>
         )}
       </ScrollView>
 
@@ -376,5 +474,123 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  summaryContainer: {
+    backgroundColor: colors.cardBg,
+    borderRadius: 24,
+    padding: spacing.lg,
+    alignItems: 'center',
+    marginVertical: spacing.lg,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  topStatus: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+    width: '100%',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 16,
+  },
+  statusText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  statusEmoji: {
+    fontSize: 18,
+    marginRight: 6,
+  },
+  pendingText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+  flowerContainer: {
+    marginVertical: spacing.md,
+  },
+  largeFlower: {
+    fontSize: 64,
+  },
+  actionsSection: {
+    width: '100%',
+    marginTop: spacing.md,
+  },
+  actionsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
+  },
+  actionList: {
+    width: '100%',
+  },
+  actionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+    borderRadius: 12,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  actionIconWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#eee',
+    marginRight: spacing.sm,
+  },
+  actionRowContent: {
+    flex: 1,
+  },
+  actionRowTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  actionRowMessage: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  actionRowTime: {
+    fontSize: 12,
+    color: colors.textLight,
+    marginTop: 2,
+  },
+  emptyActionContainer: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    backgroundColor: '#fafafa',
+    borderRadius: 12,
+  },
+  emptyActionText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  historyBtn: {
+    marginTop: spacing.xl,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.xl,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+  },
+  historyBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.primary,
   },
 });
