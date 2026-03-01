@@ -210,10 +210,7 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={commonStyles.container} edges={['top']}>
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-      >
+      <View style={[styles.scrollView, { padding: spacing.lg, paddingBottom: 0 }]}>
         {/* Header */}
         <View style={[styles.header, parents.length === 0 && { marginBottom: spacing.xl }]}>
           <Pressable onPress={() => { if (parents.length > 1) setParentModalVisible(true); }}>
@@ -314,9 +311,13 @@ export default function HomeScreen() {
               </View>
 
               {todayActions.length > 0 ? (
-                <View style={styles.actionsList}>
+                <ScrollView
+                  style={{ flex: 1 }}
+                  contentContainerStyle={styles.actionsList}
+                  showsVerticalScrollIndicator={false}
+                >
                   {todayActions.map(action => renderActionItem(action))}
-                </View>
+                </ScrollView>
               ) : (
                 <View style={styles.emptyActionContainer}>
                   <Text style={styles.emptyEmoji}>📭</Text>
@@ -326,7 +327,7 @@ export default function HomeScreen() {
             </View>
           </View>
         )}
-      </ScrollView>
+      </View>
 
       {/* Floating Action Button */}
       <Pressable
@@ -572,8 +573,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   actionsSection: {
+    flex: 1,
     width: '100%',
-    paddingBottom: spacing.xxl,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -594,6 +595,7 @@ const styles = StyleSheet.create({
   },
   actionsList: {
     gap: spacing.md,
+    paddingBottom: 100,
   },
   actionCard: {
     flexDirection: 'row',

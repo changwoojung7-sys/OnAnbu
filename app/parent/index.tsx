@@ -521,7 +521,7 @@ export default function ParentHomeScreen() {
             <View style={styles.mainContainer}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <View>
+                    <View style={{ flex: 1, paddingRight: spacing.sm }}>
                         <Text style={styles.greeting}>안녕하세요, {user?.name || '사용자'}님 🌸</Text>
                         <Text style={styles.subGreeting}>
                             {randomCheerMessage}
