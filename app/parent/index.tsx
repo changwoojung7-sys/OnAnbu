@@ -33,6 +33,9 @@ export default function ParentHomeScreen() {
     const [sound, setSound] = useState<Audio.Sound | null>(null);
     const [playingId, setPlayingId] = useState<string | null>(null);
 
+    // 새로고침 관련
+    const [isRefreshing, setIsRefreshing] = useState(false);
+
     useFocusEffect(
         useCallback(() => {
             fetchPendingActions();
@@ -49,6 +52,7 @@ export default function ParentHomeScreen() {
 
     const fetchPendingActions = async () => {
         if (!user?.id) return;
+        setIsRefreshing(true);
 
         const today = new Date().toISOString().split('T')[0];
         const startOfDay = `${today}T00:00:00.000Z`;
@@ -69,6 +73,7 @@ export default function ParentHomeScreen() {
             );
             setPendingActions(received);
         }
+        setIsRefreshing(false);
     };
 
     const fetchGuardianInfo = async () => {
@@ -537,9 +542,27 @@ export default function ParentHomeScreen() {
                 {/* Pending Actions */}
                 <View style={[styles.section, styles.pendingActionsSection]}>
                     <View style={styles.sectionHeader}>
-                        <Text style={styles.sectionTitle}>
-                            💌 오늘의 안부 {pendingActions.length > 0 && `(${pendingActions.length})`}
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <Text style={styles.sectionTitle}>
+                                💌 오늘의 안부 {pendingActions.length > 0 && `(${pendingActions.length})`}
+                            </Text>
+                            <Pressable
+                                onPress={fetchPendingActions}
+                                disabled={isRefreshing}
+                                hitSlop={10}
+                                style={({ pressed }) => [{
+                                    marginLeft: 6,
+                                    marginTop: -4,
+                                    opacity: pressed ? 0.6 : 1
+                                }]}
+                            >
+                                {isRefreshing ? (
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                ) : (
+                                    <Ionicons name="refresh" size={20} color={colors.primary} />
+                                )}
+                            </Pressable>
+                        </View>
                         <Pressable onPress={handleViewFullHistory}>
                             <Text style={styles.viewHistoryText}>전체 보기 〉</Text>
                         </Pressable>

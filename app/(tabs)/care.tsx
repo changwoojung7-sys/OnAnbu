@@ -212,10 +212,11 @@ export default function CareScreen() {
             if (Platform.OS !== 'web') {
                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
+            const userName = user?.name || '사용자';
             if (Platform.OS === 'web') {
-                window.alert(`💌 ${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
+                window.alert(`${userName} 님이 보낸 안부내용\n\n💌 ${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
             } else {
-                Alert.alert('💌 전송 완료', `${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
+                Alert.alert(`${userName} 님이 보낸 안부내용`, `💌 ${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
             }
         } catch (err: any) {
             console.error('[Care] 예외:', err);
