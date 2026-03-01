@@ -339,11 +339,19 @@ export default function HomeScreen() {
         <Ionicons name="heart" size={28} color={colors.textWhite} />
       </Pressable>
 
-      {/* 부모님 선택 모달 */}
-      <Modal visible={isParentModalVisible} transparent={true} animationType="slide">
-        <View style={styles.modalOverlay}>
+      {/* 케어대상 선택 모달 */}
+      <Modal
+        visible={isParentModalVisible}
+        transparent={true}
+        animationType="fade"
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setParentModalVisible(false)}
+        >
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>부모님 선택</Text>
+            <Text style={styles.modalTitle}>케어대상 선택</Text>
             {parents.map((parent) => (
               <TouchableOpacity
                 key={parent.id}
@@ -369,7 +377,7 @@ export default function HomeScreen() {
               <Text style={styles.modalCloseButtonText}>닫기</Text>
             </Pressable>
           </View>
-        </View>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
