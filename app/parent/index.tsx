@@ -7,6 +7,7 @@ import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
+import cheerMessages from '@/constants/cheerMessages.json';
 import { borderRadius, commonStyles, softShadow, spacing, typography } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { ActionLog } from '@/lib/types';
@@ -36,11 +37,18 @@ export default function ParentHomeScreen() {
     // 새로고침 관련
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    // 응원 메시지 관련
+    const [randomCheerMessage, setRandomCheerMessage] = useState('');
+
     useFocusEffect(
         useCallback(() => {
             fetchPendingActions();
             fetchGuardianInfo();
             checkTodayAwake();
+
+            // 랜덤 응원 메시지 설정
+            const randomIndex = Math.floor(Math.random() * cheerMessages.length);
+            setRandomCheerMessage(cheerMessages[randomIndex]);
 
             return () => {
                 if (sound) {
@@ -480,9 +488,7 @@ export default function ParentHomeScreen() {
                     <View>
                         <Text style={styles.greeting}>안녕하세요, {user?.name || '사용자'}님 🌸</Text>
                         <Text style={styles.subGreeting}>
-                            {pendingActions.length > 0
-                                ? `${getSenderName(pendingActions[0])}(이)가 안부를 보냈어요`
-                                : `${guardianName}(이)가 안부를 보냈어요`}
+                            {randomCheerMessage}
                         </Text>
                     </View>
                     <Pressable
