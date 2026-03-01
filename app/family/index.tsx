@@ -10,6 +10,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface FamilyMember {
     id: string;
+    group_id: string;
+    guardian_id: string;
     profile: {
         id: string;
         name: string;
@@ -32,6 +34,7 @@ export default function FamilyManagementScreen() {
     const [isCodeModalVisible, setIsCodeModalVisible] = useState(false);
     const [inviteCode, setInviteCode] = useState('');
     const [isProcessingCode, setIsProcessingCode] = useState(false);
+    const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
     useEffect(() => {
         fetchFamilyData();
@@ -99,6 +102,7 @@ export default function FamilyManagementScreen() {
                     id, 
                     role, 
                     guardian_id,
+                    group_id,
                     profiles:guardian_id (id, name, email, role, avatar_url)
                 `)
                 .in('group_id', uniqueGroupIds);
@@ -117,13 +121,13 @@ export default function FamilyManagementScreen() {
 
             const formattedGuardians = guardians?.map((g: any) => ({
                 id: g.id,
+                group_id: g.group_id,
+                guardian_id: g.guardian_id,
                 profile: g.profiles,
                 role: g.role
             })) || [];
 
-            // 중복 보호자 제거
-            const uniqueGuardians = Array.from(new Map(formattedGuardians.map((g: any) => [g.profile?.id, g])).values()) as any[];
-            setMembers(uniqueGuardians);
+            setMembers(formattedGuardians);
 
             if (groupData && groupData.length > 0) {
                 const parentIds = groupData.map((g: any) => g.parent_id).filter((id: any) => id);
@@ -146,12 +150,28 @@ export default function FamilyManagementScreen() {
                             .in('accepted_by', uniqueParents.map(p => p.id))
                             .eq('status', 'accepted');
 
-                        const parentsWithCodes = uniqueParents.map(p => ({
-                            ...p,
-                            invite_codes: parentInvites?.filter((i: any) => i.accepted_by === p.id).map((i: any) => i.invite_code) || []
-                        }));
+                        const parentsWithCodes = uniqueParents.map(p => {
+                            const groupOfParent = groupData?.find((g: any) => g.parent_id === p.id);
+                            return {
+                                ...p,
+                                group_id: groupOfParent?.id,
+                                invite_codes: parentInvites?.filter((i: any) => i.accepted_by === p.id).map((i: any) => i.invite_code) || []
+                            };
+                        });
 
                         setParents(parentsWithCodes);
+
+                        // Set the default selected group if none is selected
+                        setSelectedGroupId(prev => {
+                            if (!prev && parentsWithCodes.length > 0) {
+                                return parentsWithCodes[0].group_id;
+                            }
+                            // if previous group_id no longer exists, reset it
+                            if (prev && !parentsWithCodes.some(p => p.group_id === prev)) {
+                                return parentsWithCodes.length > 0 ? parentsWithCodes[0].group_id : null;
+                            }
+                            return prev;
+                        });
                         const store = useAuthStore.getState();
                         store.setParents(parentsWithCodes);
 
@@ -174,10 +194,10 @@ export default function FamilyManagementScreen() {
             const { data: guardianInvites } = await supabase
                 .from('guardian_invitations')
                 .select('invite_code, accepted_by')
-                .in('accepted_by', uniqueGuardians.map(g => g.profile?.id).filter(id => id))
+                .in('accepted_by', formattedGuardians.map((g: any) => g.profile?.id).filter((id: any) => id))
                 .eq('status', 'accepted');
 
-            const guardiansWithCodes = uniqueGuardians.map(g => ({
+            const guardiansWithCodes = formattedGuardians.map((g: any) => ({
                 ...g,
                 invite_codes: guardianInvites?.filter((i: any) => i.accepted_by === g.profile?.id).map((i: any) => i.invite_code) || []
             }));
@@ -254,44 +274,98 @@ export default function FamilyManagementScreen() {
         }
     };
 
-    const renderMember = ({ item }: { item: FamilyMember }) => (
-        <View style={styles.memberCard}>
-            <View style={styles.avatarContainer}>
-                <Text style={styles.avatarText}>{item.profile.name?.[0] || '?'}</Text>
-            </View>
-            <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>
-                    {item.profile.name}
-                    {item.profile.id === user?.id && <Text style={styles.meBadge}> (나)</Text>}
-                </Text>
-                <View style={styles.roleContainer}>
-                    <Text style={styles.memberRole}>
-                        {item.role === 'primary' ? '주 보호자' : '보조 보호자'}
-                    </Text>
-                    {(item as any).invite_codes && (item as any).invite_codes.length > 0 && (
-                        <Text style={styles.codeBadge}>#{(item as any).invite_codes.join(', #')}</Text>
-                    )}
-                </View>
-            </View>
-        </View>
-    );
+    const handleRemoveMember = (group_id: string, guardian_id: string, name: string, isSelf: boolean) => {
+        Alert.alert(
+            isSelf ? '나가기' : '내보내기',
+            isSelf ? '단독으로 결합된 가족 그룹에서 나가시겠습니까?\n이 동작은 복구할 수 없습니다.' : `${name}님을 가족 그룹에서 내보내시겠습니까?`,
+            [
+                { text: '취소', style: 'cancel' },
+                {
+                    text: '확인',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            setLoading(true);
+                            const { data, error } = await supabase.rpc('remove_family_member', {
+                                p_group_id: group_id,
+                                p_guardian_id: guardian_id
+                            });
+                            if (error) throw error;
+                            if (data && data.success) {
+                                Alert.alert('성공', data.message);
+                                fetchFamilyData();
+                            } else {
+                                Alert.alert('오류', data?.message || '처리 중 오류가 발생했습니다.');
+                            }
+                        } catch (e: any) {
+                            Alert.alert('오류', e.message || '요청 처리 중 문제가 발생했습니다.');
+                        } finally {
+                            setLoading(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
-    const renderParent = ({ item }: { item: any }) => (
-        <View style={[styles.memberCard, styles.parentCard]}>
-            <View style={[styles.avatarContainer, { backgroundColor: colors.action }]}>
-                <Text style={styles.avatarText}>{item.name?.[0] || '?'}</Text>
-            </View>
-            <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>{item.name}</Text>
-                <View style={styles.roleContainer}>
-                    <Text style={styles.memberRole}>케어대상</Text>
-                    {item.invite_codes && item.invite_codes.length > 0 && (
-                        <Text style={styles.codeBadge}>#{item.invite_codes.join(', #')}</Text>
-                    )}
+    const renderMember = ({ item }: { item: FamilyMember }) => {
+        const isSelf = item.profile.id === user?.id;
+        const amIPrimary = members.some(m => m.group_id === item.group_id && m.profile.id === user?.id && m.role === 'primary');
+        const showRemoveBtn = item.role === 'secondary' && (isSelf || amIPrimary);
+
+        return (
+            <View style={styles.memberCard}>
+                <View style={styles.avatarContainer}>
+                    <Text style={styles.avatarText}>{item.profile.name?.[0] || '?'}</Text>
                 </View>
+                <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>
+                        {item.profile.name}
+                        {isSelf && <Text style={styles.meBadge}> (나)</Text>}
+                    </Text>
+                    <View style={styles.roleContainer}>
+                        <Text style={styles.memberRole}>
+                            {item.role === 'primary' ? '주 보호자' : '보조 보호자'}
+                        </Text>
+                        {(item as any).invite_codes && (item as any).invite_codes.length > 0 && (
+                            <Text style={styles.codeBadge}>#{(item as any).invite_codes.join(', #')}</Text>
+                        )}
+                    </View>
+                </View>
+                {showRemoveBtn && (
+                    <Pressable
+                        style={styles.removeButton}
+                        onPress={() => handleRemoveMember(item.group_id, item.profile.id, item.profile.name, isSelf)}
+                    >
+                        <Text style={styles.removeButtonText}>{isSelf ? '나가기' : '내보내기'}</Text>
+                    </Pressable>
+                )}
             </View>
-        </View>
-    );
+        );
+    };
+
+    const renderParent = ({ item }: { item: any }) => {
+        const isSelected = item.group_id === selectedGroupId;
+        return (
+            <Pressable
+                style={[styles.memberCard, styles.parentCard, isSelected && styles.selectedParentCard]}
+                onPress={() => setSelectedGroupId(item.group_id)}
+            >
+                <View style={[styles.avatarContainer, { backgroundColor: colors.action }]}>
+                    <Text style={styles.avatarText}>{item.name?.[0] || '?'}</Text>
+                </View>
+                <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>{item.name}</Text>
+                    <View style={styles.roleContainer}>
+                        <Text style={styles.memberRole}>케어대상</Text>
+                        {item.invite_codes && item.invite_codes.length > 0 && (
+                            <Text style={styles.codeBadge}>#{item.invite_codes.join(', #')}</Text>
+                        )}
+                    </View>
+                </View>
+            </Pressable>
+        );
+    };
 
     const renderPendingInvite = ({ item }: { item: any }) => (
         <View style={[styles.memberCard, { opacity: 0.7 }]}>
@@ -304,6 +378,8 @@ export default function FamilyManagementScreen() {
             </View>
         </View>
     );
+
+    const filteredMembers = members.filter(m => m.group_id === selectedGroupId);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -368,7 +444,7 @@ export default function FamilyManagementScreen() {
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>함께 케어하는 가족</Text>
                         <FlatList
-                            data={members}
+                            data={filteredMembers}
                             renderItem={renderMember}
                             keyExtractor={item => item.id}
                             scrollEnabled={false}
@@ -477,4 +553,7 @@ const styles = StyleSheet.create({
     modalCancelButtonText: { fontSize: 16, color: colors.textSecondary, fontWeight: '600' },
     modalSubmitButton: { backgroundColor: colors.primary },
     modalSubmitButtonText: { fontSize: 16, color: 'white', fontWeight: 'bold' },
+    selectedParentCard: { borderColor: colors.primary, backgroundColor: '#f0fdf4', borderWidth: 2 },
+    removeButton: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.background, borderRadius: 6 },
+    removeButtonText: { fontSize: 13, color: 'red', fontWeight: 'bold' },
 });
