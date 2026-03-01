@@ -233,7 +233,7 @@ export default function CareScreen() {
     const startAdRewardFlow = (type: ActionType, payloadMessage?: string, payloadUri?: string) => {
         setIsLoadingAd(true);
 
-        const adUnitId = 'ca-app-pub-2810872681064029/3958830106';
+        const adUnitId = 'ca-app-pub-2810872681064029/3833978077';
         const rewarded = RewardedAd.createForAdRequest(adUnitId, {
             requestNonPersonalizedAdsOnly: true,
         });
