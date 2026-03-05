@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -13,19 +13,29 @@ export default function SettingsScreen() {
     const router = useRouter();
     const { user, logout } = useAuthStore();
     const [isWithdrawModalVisible, setIsWithdrawModalVisible] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+    const [withdrawStep, setWithdrawStep] = useState(1); // 1: Select, 2: Confirm Full Delete
 
     const handleWithdrawGuardian = async (option: number) => {
+        setIsLoading(true);
         try {
-            const { data, error } = await supabase.rpc('withdraw_guardian', { p_option: option });
+            const { data, error } = await supabase.functions.invoke('withdraw-guardian', {
+                body: { p_option: option }
+            });
+
             if (error || (data && !data.success)) {
                 Alert.alert('오류', '탈퇴 처리에 실패했습니다. 서버 메시지: ' + (error?.message || data?.message));
+                setIsLoading(false);
                 return;
             }
+
             setIsWithdrawModalVisible(false);
             await logout();
             router.replace('/auth/login');
         } catch (e: any) {
             Alert.alert('오류', '탈퇴 진행 중 알 수 없는 문제가 발생했습니다.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -130,42 +140,71 @@ export default function SettingsScreen() {
                                 탈퇴 시 계정 복구가 불가능합니다.{"\n"}원하시는 탈퇴 방식을 선택해주세요.
                             </Text>
 
-                            <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: '#475569' }]}
-                                onPress={() => handleWithdrawGuardian(1)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.modalButtonText}>내 계정만 탈퇴 (나머지 가족/기록 유지)</Text>
-                            </TouchableOpacity>
+                            {withdrawStep === 1 ? (
+                                <>
+                                    <TouchableOpacity
+                                        style={[styles.modalButton, { backgroundColor: '#475569' }]}
+                                        onPress={() => handleWithdrawGuardian(1)}
+                                        activeOpacity={0.7}
+                                        disabled={isLoading}
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator color={colors.textWhite} size="small" />
+                                        ) : (
+                                            <Text style={styles.modalButtonText}>내 계정만 탈퇴 (나머지 가족/기록 유지)</Text>
+                                        )}
+                                    </TouchableOpacity>
 
-                            <TouchableOpacity
-                                style={[styles.modalButton, { backgroundColor: '#ea4335', marginTop: spacing.md }]}
-                                activeOpacity={0.7}
-                                onPress={() => {
-                                    Alert.alert(
-                                        '정말 모든 기록을 파기하시겠습니까?',
-                                        '가족들과 조율하셨습니까? 회원님이 초대한 부모님 계정들을 비롯한 모든 활동, 안부, 기록 등이 영구 삭제됩니다.',
-                                        [
-                                            { text: '취소', style: 'cancel' },
-                                            {
-                                                text: '삭제 및 탈퇴',
-                                                style: 'destructive',
-                                                onPress: () => handleWithdrawGuardian(3)
-                                            }
-                                        ]
-                                    );
-                                }}
-                            >
-                                <Text style={styles.modalButtonText}>모든 가족과 앱 이용 중단 및 내역 삭제</Text>
-                            </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.modalButton, { backgroundColor: '#ea4335', marginTop: spacing.md }]}
+                                        activeOpacity={0.7}
+                                        disabled={isLoading}
+                                        onPress={() => setWithdrawStep(2)}
+                                    >
+                                        <Text style={styles.modalButtonText}>모든 가족과 앱 이용 중단 및 내역 삭제</Text>
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={[styles.modalSubtitle, { color: colors.error, fontWeight: '600' }]}>
+                                        정말 모든 기록을 파기하시겠습니까?{"\n"}
+                                        본인이 초대한 부모님 계정과 모든 활동 내역이 영구 삭제되며 복구할 수 없습니다.
+                                    </Text>
 
-                            <TouchableOpacity
-                                style={styles.cancelButton}
-                                onPress={() => setIsWithdrawModalVisible(false)}
-                                activeOpacity={0.7}
-                            >
-                                <Text style={styles.cancelButtonText}>취소</Text>
-                            </TouchableOpacity>
+                                    <TouchableOpacity
+                                        style={[styles.modalButton, { backgroundColor: '#ea4335' }]}
+                                        activeOpacity={0.7}
+                                        disabled={isLoading}
+                                        onPress={() => handleWithdrawGuardian(3)}
+                                    >
+                                        {isLoading ? (
+                                            <ActivityIndicator color={colors.textWhite} size="small" />
+                                        ) : (
+                                            <Text style={styles.modalButtonText}>확인했습니다. 모든 내역 삭제</Text>
+                                        )}
+                                    </TouchableOpacity>
+
+                                    <TouchableOpacity
+                                        style={[styles.cancelButton, { marginTop: spacing.md }]}
+                                        onPress={() => setWithdrawStep(1)}
+                                        activeOpacity={0.7}
+                                        disabled={isLoading}
+                                    >
+                                        <Text style={styles.cancelButtonText}>이전으로</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+
+                            {withdrawStep === 1 && (
+                                <TouchableOpacity
+                                    style={styles.cancelButton}
+                                    onPress={() => setIsWithdrawModalVisible(false)}
+                                    activeOpacity={0.7}
+                                    disabled={isLoading}
+                                >
+                                    <Text style={styles.cancelButtonText}>취소</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
                 </Modal>
