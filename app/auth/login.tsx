@@ -24,6 +24,7 @@ export default function LoginScreen() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [loginError, setLoginError] = useState('');
 
     // Load pending invite code if routed from enter-code
     useEffect(() => {
@@ -59,6 +60,7 @@ export default function LoginScreen() {
         }
 
         setIsLoading(true);
+        setLoginError('');
         console.log('Attempting login for:', email.trim());
 
         try {
@@ -71,10 +73,7 @@ export default function LoginScreen() {
                     .single();
 
                 if (invitation?.status === 'cancelled') {
-                    Alert.alert(
-                        '접속 불가',
-                        '탈퇴 처리된 계정입니다.\n새로 참여하려면 케어자에게 새 초대 코드를 요청해주세요.'
-                    );
+                    setLoginError('탈퇴 처리된 계정입니다.\n새로 참여하려면 케어자에게 새 초대 코드를 요청해주세요.');
                     return;
                 }
             }
@@ -396,6 +395,13 @@ export default function LoginScreen() {
                         <Text style={styles.forgotPasswordText}>비밀번호를 잊으셨나요?</Text>
                     </Pressable>
                 </View>
+                {/* 인라인 로그인 에러 메시지 */}
+                {loginError ? (
+                    <View style={styles.loginErrorBox}>
+                        <Ionicons name="alert-circle" size={18} color={colors.error} />
+                        <Text style={styles.loginErrorText}>{loginError}</Text>
+                    </View>
+                ) : null}
                 <Pressable
                     style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
                     onPress={() => {
@@ -452,6 +458,8 @@ const styles = StyleSheet.create({
     footer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.lg, gap: spacing.xs },
     footerText: { ...typography.body, color: colors.textSecondary },
     signUpLink: { ...typography.body, color: colors.primary, fontWeight: '600' },
+    loginErrorBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.error + '18', borderRadius: borderRadius.md, paddingVertical: 10, paddingHorizontal: 14, marginTop: spacing.md, gap: 8 },
+    loginErrorText: { ...typography.small, color: colors.error, flex: 1, lineHeight: 18 },
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
     modalContent: { width: '85%', backgroundColor: 'white', borderRadius: 16, padding: 24, alignItems: 'center', ...softShadow },
