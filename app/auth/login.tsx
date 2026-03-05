@@ -62,6 +62,23 @@ export default function LoginScreen() {
         console.log('Attempting login for:', email.trim());
 
         try {
+            // ── 6자리 초대코드인 경우: 로그인 전에 초대장 상태 먼저 확인 ──
+            if (loginEmail.endsWith('@onanbu.local')) {
+                const { data: invitation } = await supabase
+                    .from('parent_invitations')
+                    .select('status')
+                    .eq('invite_code', email.trim().toUpperCase())
+                    .single();
+
+                if (invitation?.status === 'cancelled') {
+                    Alert.alert(
+                        '접속 불가',
+                        '탈퇴 처리된 계정입니다.\n새로 참여하려면 케어자에게 새 초대 코드를 요청해주세요.'
+                    );
+                    return;
+                }
+            }
+
             // 1. 로그인 시도 (타임아웃 15초)
             const signInPromise = supabase.auth.signInWithPassword({
                 email: loginEmail,
