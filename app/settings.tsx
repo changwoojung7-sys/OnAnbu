@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -70,8 +70,8 @@ export default function SettingsScreen() {
                 </View>
 
                 <View style={styles.menuGroup}>
-                    <Pressable style={styles.menuItem} onPress={() => Linking.openURL('mailto:yujinit2005@gmail.com')}>
-                        <Ionicons name="mail-outline" size={22} color={colors.textPrimary} />
+                    <Pressable style={styles.menuItem} onPress={() => router.push('/support' as any)}>
+                        <Ionicons name="chatbubbles-outline" size={22} color={colors.textPrimary} />
                         <Text style={[styles.menuText, { marginLeft: 8, flex: 1 }]}>문의하기</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                     </Pressable>
