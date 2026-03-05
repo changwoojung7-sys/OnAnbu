@@ -128,6 +128,25 @@ export default function LoginScreen() {
                 if (!isMounted.current) return;
 
                 if (profile) {
+                    // ── 탈퇴한 부모님 계정 차단: invitation이 cancelled면 로그인 불가 ──
+                    if (profile.role === 'parent') {
+                        const { data: invitation } = await supabase
+                            .from('parent_invitations')
+                            .select('status')
+                            .eq('accepted_by', data.user.id)
+                            .single();
+
+                        if (invitation?.status === 'cancelled') {
+                            console.log('[Login] 차단: 탈퇴한 부모님 계정');
+                            await supabase.auth.signOut();
+                            Alert.alert(
+                                '접속 불가',
+                                '탈퇴 처리된 계정입니다.\n새로 참여하려면 케어자에게 새 초대 코드를 요청해주세요.'
+                            );
+                            return;
+                        }
+                    }
+
                     setUser(profile);
                     setIsAuthenticated(true);
                     console.log('Login successful, role:', profile.role);
