@@ -111,7 +111,11 @@ export default function ParentSettingsScreen() {
                     </Pressable>
 
                     <Pressable
-                        style={[styles.menuItem, { borderBottomWidth: 0 }]}
+                        style={({ pressed }) => [
+                            styles.menuItem,
+                            { borderBottomWidth: 0 },
+                            pressed && { opacity: 0.6 },
+                        ]}
                         onPress={() => {
                             Alert.alert(
                                 '회원탈퇴',
@@ -150,6 +154,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: spacing.lg,
+        paddingBottom: 60,
     },
     header: {
         flexDirection: 'row',
