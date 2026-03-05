@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -17,21 +17,22 @@ export default function EnterCodeScreen() {
     const [code, setCode] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [verifiedInvitation, setVerifiedInvitation] = useState<any>(null);
+    const [errorMsg, setErrorMsg] = useState('');
 
     const isParentType = params.type === 'parent';
 
     const handleVerifyCode = async () => {
         const cleanCode = code.trim().toUpperCase();
+        setErrorMsg('');
 
         if (cleanCode.length !== 6) {
-            Alert.alert('알림', '6자리 초대코드를 입력해주세요.');
+            setErrorMsg('6자리 초대코드를 입력해주세요.');
             return;
         }
 
         setIsLoading(true);
 
         try {
-            // RPC 호출로 초대 코드 검증 (보안 및 권한 문제 해결)
             const { data: invitation, error } = await supabase.rpc('check_invite_code', {
                 code_input: cleanCode,
                 type_input: isParentType ? 'parent' : 'guardian'
@@ -39,48 +40,36 @@ export default function EnterCodeScreen() {
 
             if (error || !invitation) {
                 console.error('Invite code check failed:', error);
-                Alert.alert('오류', '유효하지 않거나 만료된 초대코드입니다.');
+                setErrorMsg('유효하지 않거나 만료된 초대코드입니다.');
                 setIsLoading(false);
                 return;
             }
 
             // ── 탈퇴 처리된 초대코드 차단 ──
             if (invitation.status === 'cancelled') {
-                Alert.alert(
-                    '접속 불가',
-                    '탈퇴 처리된 초대코드입니다.\n케어자에게 새 초대 코드를 요청해주세요.'
-                );
+                setErrorMsg('탈퇴 처리된 초대코드입니다.\n케어자에게 새 초대 코드를 요청해주세요.');
                 setIsLoading(false);
                 return;
             }
 
             // 이미 사용된 코드인 경우 로그인으로 유도
             if (invitation.status === 'accepted') {
-                Alert.alert('알림', '이미 등록된 초대코드입니다.\n해당 코드로 로그인해주세요.');
-                if (isParentType) {
-                    setPendingInviteCode(cleanCode);
-                }
-                router.replace('/auth/login');
+                setErrorMsg('이미 등록된 초대코드입니다. 해당 코드로 로그인해주세요.');
+                if (isParentType) setPendingInviteCode(cleanCode);
+                setTimeout(() => router.replace('/auth/login'), 1500);
                 return;
             }
 
             if (isParentType) {
-                // 부모님 초대 코드 처리
-                // 부모님은 아직 계정이 없으므로 parent-signup 페이지로 이동해야 함
                 router.push({
                     pathname: '/auth/parent-signup',
-                    params: {
-                        code: cleanCode,
-                        inviterId: invitation.created_by,
-                    },
+                    params: { code: cleanCode, inviterId: invitation.created_by },
                 });
-
             } else {
-                // 보조케어대상: 즉시 이동하지 않고 부모님 정보를 화면에 표시
                 setVerifiedInvitation(invitation);
             }
         } catch (error) {
-            Alert.alert('오류', '코드 확인 중 문제가 발생했습니다.');
+            setErrorMsg('코드 확인 중 문제가 발생했습니다.');
             console.error(error);
         } finally {
             setIsLoading(false);
@@ -146,12 +135,20 @@ export default function EnterCodeScreen() {
                                 placeholder="ABC123"
                                 placeholderTextColor={colors.textLight}
                                 value={code}
-                                onChangeText={(text) => setCode(text.toUpperCase())}
+                                onChangeText={(text) => { setCode(text.toUpperCase()); setErrorMsg(''); }}
                                 maxLength={6}
                                 autoCapitalize="characters"
                                 autoCorrect={false}
                             />
                         </View>
+
+                        {/* 인라인 에러 메시지 */}
+                        {errorMsg ? (
+                            <View style={styles.errorBox}>
+                                <Ionicons name="alert-circle" size={18} color={colors.error} />
+                                <Text style={styles.errorText}>{errorMsg}</Text>
+                            </View>
+                        ) : null}
 
                         {/* Submit Button */}
                         <Pressable
@@ -232,6 +229,22 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         minWidth: 200,
         ...softShadow,
+    },
+    errorBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: colors.error + '18',
+        borderRadius: borderRadius.md,
+        paddingVertical: 10,
+        paddingHorizontal: 14,
+        marginBottom: spacing.md,
+        gap: 8,
+    },
+    errorText: {
+        ...typography.small,
+        color: colors.error,
+        flex: 1,
+        lineHeight: 18,
     },
     submitButton: {
         backgroundColor: colors.primary,
