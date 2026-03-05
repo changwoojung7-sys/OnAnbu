@@ -1,11 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
 import { borderRadius, commonStyles, softShadow, spacing, typography } from '@/constants/theme';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 
 export default function ParentSettingsScreen() {
@@ -101,18 +102,41 @@ export default function ParentSettingsScreen() {
                 <View style={styles.menuSection}>
                     <Text style={styles.menuSectionTitle}>기타</Text>
 
-                    <Pressable style={styles.menuItem}>
-                        <Ionicons name="information-circle-outline" size={22} color={colors.textSecondary} />
-                        <Text style={styles.menuItemText}>앱 정보</Text>
-                        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
-                    </Pressable>
-
                     <Pressable
                         style={[styles.menuItem, styles.logoutItem]}
                         onPress={handleLogout}
                     >
                         <Ionicons name="log-out-outline" size={22} color={colors.error} />
                         <Text style={[styles.menuItemText, styles.logoutText]}>로그아웃</Text>
+                    </Pressable>
+
+                    <Pressable
+                        style={[styles.menuItem, { borderBottomWidth: 0 }]}
+                        onPress={() => {
+                            Alert.alert(
+                                '회원탈퇴',
+                                '정말 탈퇴하시겠습니까?\n가족 그룹 연결이 해제되며, 기존의 초대 코드는 더 이상 사용할 수 없게 됩니다.',
+                                [
+                                    { text: '취소', style: 'cancel' },
+                                    {
+                                        text: '탈퇴',
+                                        style: 'destructive',
+                                        onPress: async () => {
+                                            const { data, error } = await supabase.rpc('withdraw_parent');
+                                            if (error || (data && !data.success)) {
+                                                Alert.alert('오류', '탈퇴 처리에 실패했습니다. 고객센터에 문의해주세요.');
+                                                return;
+                                            }
+                                            await logout();
+                                            router.replace('/auth/login');
+                                        }
+                                    }
+                                ]
+                            );
+                        }}
+                    >
+                        <Ionicons name="trash-outline" size={22} color={colors.error} />
+                        <Text style={[styles.menuItemText, styles.logoutText]}>회원탈퇴</Text>
                     </Pressable>
                 </View>
             </ScrollView>
