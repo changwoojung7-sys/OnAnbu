@@ -50,13 +50,26 @@ export default function EditProfileScreen() {
 
         setUploadingAvatar(true);
         try {
+            // ① 기존 프로필 사진이 있으면 Storage에서 삭제
+            if (user.avatar_url) {
+                try {
+                    // publicUrl 경로에서 파일명 추출 (avatars/... 형태)
+                    const urlPath = user.avatar_url.split('/storage/v1/object/public/media/')[1]?.split('?')[0];
+                    if (urlPath) {
+                        await supabase.storage.from('media').remove([urlPath]);
+                        console.log('[ProfileEdit] 기존 사진 삭제:', urlPath);
+                    }
+                } catch (deleteErr) {
+                    console.warn('[ProfileEdit] 기존 사진 삭제 실패 (무시):', deleteErr);
+                }
+            }
+
+            // ② user.id 고정 파일명 사용 → 동일 데이여도 upsert로 덮어쓰기
             const fileExt = uri.split('.').pop() || 'jpg';
-            const cleanExt = fileExt.length > 4 ? 'jpg' : fileExt.replace(/[^a-zA-Z]/g, '');
-            const fileName = `avatars/${user.id}-${Date.now()}.${cleanExt || 'jpg'}`;
+            const cleanExt = fileExt.length > 4 ? 'jpg' : fileExt.replace(/[^a-zA-Z]/g, '') || 'jpg';
+            const fileName = `avatars/${user.id}.${cleanExt}`;
 
             let fileData: Blob | ArrayBuffer;
-
-            // 웹/앱에서 안정적으로 업로드하기 위해 base64Data 우선 활용
             if (base64Data) {
                 fileData = decode(base64Data);
             } else {
@@ -67,17 +80,20 @@ export default function EditProfileScreen() {
             const { error: uploadError } = await supabase.storage
                 .from('media')
                 .upload(fileName, fileData, {
-                    contentType: `image/${cleanExt || 'jpeg'}`,
-                    upsert: false,
+                    contentType: `image/${cleanExt}`,
+                    upsert: true,  // 기존 파일 덮어쓰기
                 });
 
             if (uploadError) throw uploadError;
 
+            // ③ 공개 URL 가져오기 + 캐시 버스팅 쿼리 추가 (웹에서 컴바로 반영)
             const { data: publicUrlData } = supabase.storage
                 .from('media')
                 .getPublicUrl(fileName);
 
-            setAvatarUrl(publicUrlData.publicUrl);
+            const finalUrl = `${publicUrlData.publicUrl}?t=${Date.now()}`;
+            setAvatarUrl(finalUrl);
+            console.log('[ProfileEdit] 업로드 완료:', finalUrl);
 
         } catch (error: any) {
             console.error('Avatar upload error:', error);
