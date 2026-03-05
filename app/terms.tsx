@@ -69,7 +69,7 @@ export default function TermsScreen() {
                 <Pressable onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
                 </Pressable>
-                <Text style={styles.headerTitle}>이용약관 및 사업자정보</Text>
+                <Text style={styles.headerTitle}>이용약관</Text>
                 <View style={{ width: 24 }} />
             </View>
 

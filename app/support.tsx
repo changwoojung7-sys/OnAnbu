@@ -1,15 +1,52 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LayoutAnimation, Linking, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, UIManager, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
 import { borderRadius, commonStyles, softShadow, spacing, typography } from '@/constants/theme';
 
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+const FAQ_DATA = [
+    {
+        q: '비밀번호를 잊어버렸어요.',
+        a: '로그인 화면 하단의 "비밀번호 찾기"를 통해 등록하신 이메일로 비밀번호 재설정 링크를 받으실 수 있습니다.'
+    },
+    {
+        q: '회원탈퇴는 어떻게 하나요?',
+        a: '설정 화면 내 "내 정보 수정" 메뉴의 하단 혹은 문의하기를 통해 탈퇴 요청을 접수할 수 있습니다.'
+    },
+    {
+        q: '아이디(이메일) 변경이 가능한가요?',
+        a: '보안상의 이유로 아이디(이메일) 변경은 불가능합니다. 새로운 이메일 사용을 원하시면 신규 가입이 필요합니다.'
+    },
+    {
+        q: '앱이 자꾸 종료됩니다.',
+        a: '네트워크 연결이 지연되었거나 일시적 오류일 수 있습니다. 앱을 완전히 종료하신 후 재실행해 보시거나, 기기의 소프트웨어를 최신 버전으로 업데이트해 주세요.'
+    },
+    {
+        q: '데이터 백업 기능이 있나요?',
+        a: '현재는 보안 클라우드에 자동 저장되어 기기를 변경하셔도 접속 시 기존 데이터를 가져옵니다. 별도의 수동 백업 기능은 지원하지 않습니다.'
+    },
+    {
+        q: '제안하고 싶은 기능이 있어요.',
+        a: '언제든 환영합니다! 상단의 "문의하기" 버튼을 통해 의견을 보내주시면 서비스 개선에 적극 반영하겠습니다.'
+    }
+];
+
 export default function SupportScreen() {
     const router = useRouter();
     const [isEmailModalVisible, setIsEmailModalVisible] = useState(false);
+    const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+
+    const toggleFaq = (index: number) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setOpenFaqIndex(openFaqIndex === index ? null : index);
+    };
 
     const supportEmail = 'yujinit2005@gmail.com';
 
@@ -95,6 +132,40 @@ export default function SupportScreen() {
                             <Text style={styles.categoryText}>{cat}</Text>
                         </View>
                     ))}
+                </View>
+
+                {/* FAQ 아코디언 컴포넌트 */}
+                <View style={styles.faqSection}>
+                    <Text style={styles.faqHeaderTitle}>자주 묻는 질문</Text>
+                    {FAQ_DATA.map((faq, index) => {
+                        const isOpen = openFaqIndex === index;
+                        return (
+                            <View key={index} style={styles.faqItemContainer}>
+                                <Pressable
+                                    style={styles.faqQuestionRow}
+                                    onPress={() => toggleFaq(index)}
+                                >
+                                    <Text style={styles.faqQuestionText}>
+                                        <Text style={{ color: colors.primary, fontWeight: 'bold' }}>Q. </Text>
+                                        {faq.q}
+                                    </Text>
+                                    <Ionicons
+                                        name={isOpen ? 'chevron-up' : 'chevron-down'}
+                                        size={20}
+                                        color={colors.textSecondary}
+                                    />
+                                </Pressable>
+                                {isOpen && (
+                                    <View style={styles.faqAnswerBox}>
+                                        <Text style={styles.faqAnswerText}>
+                                            <Text style={{ fontWeight: 'bold' }}>A. </Text>
+                                            {faq.a}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })}
                 </View>
 
                 {/* 사업자 정보 부분 (제공된 내용 반영) */}
@@ -292,6 +363,49 @@ const styles = StyleSheet.create({
         ...typography.body,
         color: colors.textSecondary,
         textDecorationLine: 'underline',
+    },
+    // FAQ Styles
+    faqSection: {
+        marginBottom: spacing.xxl,
+    },
+    faqHeaderTitle: {
+        ...typography.h3,
+        color: colors.textPrimary,
+        marginBottom: spacing.md,
+        paddingHorizontal: spacing.sm,
+    },
+    faqItemContainer: {
+        backgroundColor: colors.cardBg,
+        marginBottom: spacing.sm,
+        borderRadius: borderRadius.md,
+        ...softShadow,
+        overflow: 'hidden',
+    },
+    faqQuestionRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 16,
+        paddingHorizontal: spacing.md,
+    },
+    faqQuestionText: {
+        ...typography.body,
+        color: colors.textPrimary,
+        fontWeight: '500',
+        flex: 1,
+        paddingRight: spacing.sm,
+    },
+    faqAnswerBox: {
+        backgroundColor: '#F8FAFC', // 아주아주 연한 회색 배경으로 답변 공간 구분
+        padding: spacing.md,
+        borderTopWidth: 1,
+        borderTopColor: colors.border,
+    },
+    faqAnswerText: {
+        ...typography.body,
+        color: colors.textSecondary,
+        fontSize: 14,
+        lineHeight: 22,
     },
     // Modal Styles
     modalOverlay: {

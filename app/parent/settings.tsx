@@ -78,6 +78,26 @@ export default function ParentSettingsScreen() {
                     </Pressable>
                 </View>
 
+                {/* 고객지원 추가영역 */}
+                <View style={styles.menuSection}>
+                    <Text style={styles.menuSectionTitle}>고객지원</Text>
+                    <Pressable style={styles.menuItem} onPress={() => router.push('/support' as any)}>
+                        <Ionicons name="chatbubbles-outline" size={22} color={colors.textSecondary} />
+                        <Text style={styles.menuItemText}>문의하기</Text>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+                    </Pressable>
+                    <Pressable style={styles.menuItem} onPress={() => router.push('/terms' as any)}>
+                        <Ionicons name="document-text-outline" size={22} color={colors.textSecondary} />
+                        <Text style={styles.menuItemText}>이용약관</Text>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+                    </Pressable>
+                    <Pressable style={styles.menuItem} onPress={() => router.push('/privacy' as any)}>
+                        <Ionicons name="shield-checkmark-outline" size={22} color={colors.textSecondary} />
+                        <Text style={styles.menuItemText}>개인정보처리방침</Text>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+                    </Pressable>
+                </View>
+
                 <View style={styles.menuSection}>
                     <Text style={styles.menuSectionTitle}>기타</Text>
 

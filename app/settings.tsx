@@ -77,7 +77,7 @@ export default function SettingsScreen() {
                     </Pressable>
                     <Pressable style={styles.menuItem} onPress={() => router.push('/terms' as any)}>
                         <Ionicons name="document-text-outline" size={22} color={colors.textPrimary} />
-                        <Text style={[styles.menuText, { marginLeft: 8, flex: 1 }]}>이용약관 및 사업자정보</Text>
+                        <Text style={[styles.menuText, { marginLeft: 8, flex: 1 }]}>이용약관</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                     </Pressable>
                     <Pressable style={styles.menuItem} onPress={() => router.push('/privacy' as any)}>
