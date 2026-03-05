@@ -66,11 +66,11 @@ export default function LoginScreen() {
         try {
             // ── 6자리 초대코드인 경우: 로그인 전에 초대장 상태 먼저 확인 ──
             if (loginEmail.endsWith('@onanbu.local')) {
-                const { data: invitation } = await supabase
-                    .from('parent_invitations')
-                    .select('status')
-                    .eq('invite_code', email.trim().toUpperCase())
-                    .single();
+                // RLS를 우회하는 SECURITY DEFINER RPC 사용 (비로그인 상태에서도 동작)
+                const { data: invitation } = await supabase.rpc('check_invite_code', {
+                    code_input: email.trim().toUpperCase(),
+                    type_input: 'parent',
+                });
 
                 if (invitation?.status === 'cancelled') {
                     setLoginError('탈퇴 처리된 계정입니다.\n새로 참여하려면 케어자에게 새 초대 코드를 요청해주세요.');
