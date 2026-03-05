@@ -44,6 +44,16 @@ export default function EnterCodeScreen() {
                 return;
             }
 
+            // ── 탈퇴 처리된 초대코드 차단 ──
+            if (invitation.status === 'cancelled') {
+                Alert.alert(
+                    '접속 불가',
+                    '탈퇴 처리된 초대코드입니다.\n케어자에게 새 초대 코드를 요청해주세요.'
+                );
+                setIsLoading(false);
+                return;
+            }
+
             // 이미 사용된 코드인 경우 로그인으로 유도
             if (invitation.status === 'accepted') {
                 Alert.alert('알림', '이미 등록된 초대코드입니다.\n해당 코드로 로그인해주세요.');
