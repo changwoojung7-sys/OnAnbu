@@ -125,14 +125,7 @@ export default function SupportScreen() {
                     </Text>
                 </View>
 
-                {/* 카테고리 (시각적 장식) */}
-                <View style={styles.categoryContainer}>
-                    {['계정/로그인', '결제/구독', '미션/인증', '친구/소셜', '데이터/오류', '기타문의'].map((cat, idx) => (
-                        <View key={idx} style={styles.categoryBadge}>
-                            <Text style={styles.categoryText}>{cat}</Text>
-                        </View>
-                    ))}
-                </View>
+
 
                 {/* FAQ 아코디언 컴포넌트 */}
                 <View style={styles.faqSection}>
@@ -317,27 +310,6 @@ const styles = StyleSheet.create({
         ...typography.caption,
         color: colors.textLight,
         fontSize: 13,
-    },
-    categoryContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-        gap: spacing.sm,
-        marginBottom: spacing.xxl,
-        borderBottomWidth: 1,
-        borderBottomColor: colors.border,
-        paddingBottom: spacing.xxl,
-    },
-    categoryBadge: {
-        backgroundColor: '#e2e8f0', // 연한 회색 바탕
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: borderRadius.full,
-    },
-    categoryText: {
-        ...typography.caption,
-        color: colors.textPrimary,
-        fontWeight: '500',
     },
     footerSection: {
         alignItems: 'center',
