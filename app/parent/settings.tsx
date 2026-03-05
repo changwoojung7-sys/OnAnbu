@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -102,20 +102,18 @@ export default function ParentSettingsScreen() {
                 <View style={styles.menuSection}>
                     <Text style={styles.menuSectionTitle}>기타</Text>
 
-                    <Pressable
+                    <TouchableOpacity
                         style={[styles.menuItem, styles.logoutItem]}
                         onPress={handleLogout}
+                        activeOpacity={0.6}
                     >
                         <Ionicons name="log-out-outline" size={22} color={colors.error} />
                         <Text style={[styles.menuItemText, styles.logoutText]}>로그아웃</Text>
-                    </Pressable>
+                    </TouchableOpacity>
 
-                    <Pressable
-                        style={({ pressed }) => [
-                            styles.menuItem,
-                            { borderBottomWidth: 0 },
-                            pressed && { opacity: 0.6 },
-                        ]}
+                    <TouchableOpacity
+                        style={[styles.menuItem, { borderBottomWidth: 0 }]}
+                        activeOpacity={0.6}
                         onPress={() => {
                             Alert.alert(
                                 '회원탈퇴',
@@ -141,7 +139,7 @@ export default function ParentSettingsScreen() {
                     >
                         <Ionicons name="trash-outline" size={22} color={colors.error} />
                         <Text style={[styles.menuItemText, styles.logoutText]}>회원탈퇴</Text>
-                    </Pressable>
+                    </TouchableOpacity>
                 </View>
             </ScrollView>
         </SafeAreaView>

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -105,15 +105,15 @@ export default function SettingsScreen() {
                 </View>
 
                 <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
-                    <Pressable style={styles.logoutButton} onPress={handleLogout}>
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.6}>
                         <Text style={styles.logoutText}>로그아웃</Text>
-                    </Pressable>
+                    </TouchableOpacity>
 
                     <Text style={{ marginHorizontal: 10, alignSelf: 'center', color: colors.border }}>|</Text>
 
-                    <Pressable style={styles.logoutButton} onPress={() => setIsWithdrawModalVisible(true)}>
+                    <TouchableOpacity style={styles.logoutButton} onPress={() => setIsWithdrawModalVisible(true)} activeOpacity={0.6}>
                         <Text style={[styles.logoutText, { color: colors.textSecondary }]}>회원탈퇴</Text>
-                    </Pressable>
+                    </TouchableOpacity>
                 </View>
 
                 {/* 다단계 회원탈퇴 모달 */}
@@ -130,15 +130,17 @@ export default function SettingsScreen() {
                                 탈퇴 시 계정 복구가 불가능합니다.{"\n"}원하시는 탈퇴 방식을 선택해주세요.
                             </Text>
 
-                            <Pressable
+                            <TouchableOpacity
                                 style={[styles.modalButton, { backgroundColor: '#475569' }]}
                                 onPress={() => handleWithdrawGuardian(1)}
+                                activeOpacity={0.7}
                             >
                                 <Text style={styles.modalButtonText}>내 계정만 탈퇴 (나머지 가족/기록 유지)</Text>
-                            </Pressable>
+                            </TouchableOpacity>
 
-                            <Pressable
+                            <TouchableOpacity
                                 style={[styles.modalButton, { backgroundColor: '#ea4335', marginTop: spacing.md }]}
+                                activeOpacity={0.7}
                                 onPress={() => {
                                     Alert.alert(
                                         '정말 모든 기록을 파기하시겠습니까?',
@@ -155,14 +157,15 @@ export default function SettingsScreen() {
                                 }}
                             >
                                 <Text style={styles.modalButtonText}>모든 가족과 앱 이용 중단 및 내역 삭제</Text>
-                            </Pressable>
+                            </TouchableOpacity>
 
-                            <Pressable
+                            <TouchableOpacity
                                 style={styles.cancelButton}
                                 onPress={() => setIsWithdrawModalVisible(false)}
+                                activeOpacity={0.7}
                             >
                                 <Text style={styles.cancelButtonText}>취소</Text>
-                            </Pressable>
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </Modal>
