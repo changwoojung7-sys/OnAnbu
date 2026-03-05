@@ -15,7 +15,7 @@ export default function ParentSettingsScreen() {
     const router = useRouter();
     const { user, logout } = useAuthStore();
     const [isWithdrawModalVisible, setIsWithdrawModalVisible] = useState(false);
-    const [isConfirmModalVisible, setIsConfirmModalVisible] = useState(false);
+    const [withdrawStep, setWithdrawStep] = useState(1); // 1: 안내/선택, 2: 전체삭제 재확인
     const [isLoading, setIsLoading] = useState(false);
 
     const handleLogout = async () => {
@@ -23,36 +23,25 @@ export default function ParentSettingsScreen() {
         router.replace('/auth/login');
     };
 
-    const handleWithdraw = async () => {
+    const handleWithdraw = async (option: number) => {
         setIsLoading(true);
         try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) {
-                setIsConfirmModalVisible(false);
-                setIsWithdrawModalVisible(false);
-                return;
-            }
-
-            const response = await fetch(`${SUPABASE_URL}/functions/v1/withdraw-parent`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${session.access_token}`,
-                    'Content-Type': 'application/json',
-                },
+            const { data, error } = await supabase.functions.invoke('withdraw-parent', {
+                body: { p_option: option }
             });
-            const result = await response.json();
 
-            if (!result.success) {
-                console.error('[Withdraw] 실패:', result.message);
-                // 실패해도 로컬 로그아웃은 진행
+            if (error || (data && !data.success)) {
+                console.error('[Withdraw] 실패:', error || data?.message);
+                alert('탈퇴 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+                setIsLoading(false);
+                return;
             }
 
             await logout();
             router.replace('/auth/login');
         } catch (e: any) {
             console.error('[Withdraw] 오류:', e);
-            await logout();
-            router.replace('/auth/login');
+            alert('탈퇴 처리 중 문제가 발생했습니다.');
         } finally {
             setIsLoading(false);
         }
@@ -154,74 +143,89 @@ export default function ParentSettingsScreen() {
                 </View>
             </ScrollView>
 
-            {/* 1단계: 회원탈퇴 안내 모달 */}
+            {/* 다단계 회원탈퇴 모달 */}
             <Modal
                 visible={isWithdrawModalVisible}
                 transparent={true}
                 animationType="fade"
-                onRequestClose={() => setIsWithdrawModalVisible(false)}
+                onRequestClose={() => {
+                    if (!isLoading) {
+                        setIsWithdrawModalVisible(false);
+                        setWithdrawStep(1);
+                    }
+                }}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>회원 탈퇴</Text>
-                        <Text style={styles.modalSubtitle}>
-                            탈퇴 시 기존 초대 코드가 무효화됩니다.{"\n"}
-                            과거의 가족 기록은 케어자 앱에 보존됩니다.{"\n\n"}
-                            재참여를 원하시면 케어자에게{"\n"}새 초대 코드를 요청하세요.
-                        </Text>
-                        <TouchableOpacity
-                            style={[styles.modalButton, { backgroundColor: colors.error }]}
-                            activeOpacity={0.8}
-                            onPress={() => {
-                                setIsWithdrawModalVisible(false);
-                                setTimeout(() => setIsConfirmModalVisible(true), 300);
-                            }}
-                        >
-                            <Text style={styles.modalButtonText}>탈퇴 진행</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={styles.cancelButton}
-                            activeOpacity={0.7}
-                            onPress={() => setIsWithdrawModalVisible(false)}
-                        >
-                            <Text style={styles.cancelButtonText}>취소</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
+                        <Text style={styles.modalTitle}>회원 탈퇴 선택</Text>
 
-            {/* 2단계: 최종 확인 모달 */}
-            <Modal
-                visible={isConfirmModalVisible}
-                transparent={true}
-                animationType="fade"
-                onRequestClose={() => setIsConfirmModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <Text style={styles.modalTitle}>정말 탈퇴하시겠습니까?</Text>
-                        <Text style={styles.modalSubtitle}>
-                            이 작업은 되돌릴 수 없습니다.{"\n"}계속 진행하시겠습니까?
-                        </Text>
-                        {isLoading ? (
-                            <ActivityIndicator color={colors.error} style={{ marginVertical: spacing.lg }} />
+                        {withdrawStep === 1 ? (
+                            <>
+                                <Text style={styles.modalSubtitle}>
+                                    탈퇴 시 기존 초대 코드가 무효화됩니다.{"\n"}원하시는 탈퇴 방식을 선택해주세요.
+                                </Text>
+
+                                <TouchableOpacity
+                                    style={[styles.modalButton, { backgroundColor: '#475569' }]}
+                                    activeOpacity={0.8}
+                                    disabled={isLoading}
+                                    onPress={() => handleWithdraw(1)}
+                                >
+                                    {isLoading ? (
+                                        <ActivityIndicator color={colors.textWhite} size="small" />
+                                    ) : (
+                                        <Text style={styles.modalButtonText}>내 계정만 탈퇴 (기존 기록 유지)</Text>
+                                    )}
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.modalButton, { backgroundColor: colors.error, marginTop: spacing.md }]}
+                                    activeOpacity={0.8}
+                                    disabled={isLoading}
+                                    onPress={() => setWithdrawStep(2)}
+                                >
+                                    <Text style={styles.modalButtonText}>내 기록까지 모두 삭제하고 탈퇴</Text>
+                                </TouchableOpacity>
+                            </>
                         ) : (
                             <>
+                                <Text style={[styles.modalSubtitle, { color: colors.error, fontWeight: '600' }]}>
+                                    정말 모든 기록을 파기하시겠습니까?{"\n"}
+                                    본인이 올린 사진과 메시지가 영구 삭제되며 복구할 수 없습니다.
+                                </Text>
+
                                 <TouchableOpacity
                                     style={[styles.modalButton, { backgroundColor: colors.error }]}
                                     activeOpacity={0.8}
-                                    onPress={handleWithdraw}
+                                    disabled={isLoading}
+                                    onPress={() => handleWithdraw(2)}
                                 >
-                                    <Text style={styles.modalButtonText}>최종 탈퇴</Text>
+                                    {isLoading ? (
+                                        <ActivityIndicator color={colors.textWhite} size="small" />
+                                    ) : (
+                                        <Text style={styles.modalButtonText}>확인했습니다. 모든 기록 삭제</Text>
+                                    )}
                                 </TouchableOpacity>
+
                                 <TouchableOpacity
-                                    style={styles.cancelButton}
+                                    style={[styles.cancelButton, { marginTop: spacing.md }]}
                                     activeOpacity={0.7}
-                                    onPress={() => setIsConfirmModalVisible(false)}
+                                    disabled={isLoading}
+                                    onPress={() => setWithdrawStep(1)}
                                 >
-                                    <Text style={styles.cancelButtonText}>취소</Text>
+                                    <Text style={styles.cancelButtonText}>이전으로</Text>
                                 </TouchableOpacity>
                             </>
+                        )}
+
+                        {!isLoading && withdrawStep === 1 && (
+                            <TouchableOpacity
+                                style={[styles.cancelButton, { marginTop: spacing.md }]}
+                                activeOpacity={0.7}
+                                onPress={() => setIsWithdrawModalVisible(false)}
+                            >
+                                <Text style={styles.cancelButtonText}>취소</Text>
+                            </TouchableOpacity>
                         )}
                     </View>
                 </View>
