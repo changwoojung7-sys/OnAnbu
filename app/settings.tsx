@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -65,6 +65,24 @@ export default function SettingsScreen() {
                     <Pressable style={styles.menuItem} onPress={() => router.push('/family' as any)}>
                         <Ionicons name="people-outline" size={22} color={colors.primary} />
                         <Text style={[styles.menuText, { marginLeft: 8 }]}>가족 관리</Text>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+                    </Pressable>
+                </View>
+
+                <View style={styles.menuGroup}>
+                    <Pressable style={styles.menuItem} onPress={() => Linking.openURL('mailto:yujinit2005@gmail.com')}>
+                        <Ionicons name="mail-outline" size={22} color={colors.textPrimary} />
+                        <Text style={[styles.menuText, { marginLeft: 8, flex: 1 }]}>문의하기</Text>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+                    </Pressable>
+                    <Pressable style={styles.menuItem} onPress={() => router.push('/terms' as any)}>
+                        <Ionicons name="document-text-outline" size={22} color={colors.textPrimary} />
+                        <Text style={[styles.menuText, { marginLeft: 8, flex: 1 }]}>이용약관 및 사업자정보</Text>
+                        <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
+                    </Pressable>
+                    <Pressable style={styles.menuItem} onPress={() => router.push('/privacy' as any)}>
+                        <Ionicons name="lock-closed-outline" size={22} color={colors.textPrimary} />
+                        <Text style={[styles.menuText, { marginLeft: 8, flex: 1 }]}>개인정보처리방침</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                     </Pressable>
                 </View>

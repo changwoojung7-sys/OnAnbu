@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "ONANBU",
-    "slug": "onanbu-app",
+    "slug": "on-anbu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -45,9 +45,19 @@
       "typedRoutes": true
     },
     "extra": {
+      "router": {
+        "origin": false
+      },
       "eas": {
-        "projectId": "your-project-id"
+        "projectId": "4d09e18a-0eb8-472d-a9f3-cc74d48fdc02"
       }
+    },
+    "owner": "calamus7",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/4d09e18a-0eb8-472d-a9f3-cc74d48fdc02"
     }
   }
 }

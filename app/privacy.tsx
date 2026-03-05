@@ -1,0 +1,115 @@
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { colors } from '@/constants/Colors';
+import { commonStyles, spacing, typography } from '@/constants/theme';
+
+const PRIVACY_TEXT = `개인정보처리방침
+시행일: 2026-01-13
+
+상호(개인정보처리자): 유진에이아이(YujinAI) | 대표자: 정창우
+
+유진에이아이(YujinAI)(이하 “회사”)는 「개인정보보호법」 등 관련 법령을 준수하며, 정보주체의 개인정보를 보호하고 이와 관련한 고충을 신속하고 원활하게 처리할 수 있도록 하기 위하여 다음과 같이 개인정보처리방침을 수립·공개합니다.
+
+제1조 (수집하는 개인정보 항목 및 수집방법)
+회사는 서비스 제공을 위해 필요한 최소한의 개인정보를 수집하고 있습니다.
+1. 수집 항목
+- 회원가입/로그인: (필수) 이메일, 비밀번호, 닉네임, 휴대폰번호 / (선택) 프로필 이미지
+- 서비스 이용: 접속 로그, 쿠키, 접속 IP 정보, 기기정보, 서비스 이용 기록
+- 미션 수행: 회원이 서비스 내에 입력/업로드하는 텍스트, 이미지, 영상 등 기록 콘텐츠
+2. 수집 방법
+모바일 앱 회원가입, 서비스 이용 과정에서 생성
+
+제2조 (개인정보의 이용 목적)
+회사는 수집한 개인정보를 다음의 목적을 위해 활용합니다.
+- 회원 관리: 본인 확인, 개인 식별, 부정 이용 방지
+- 서비스 제공: 안부 및 커뮤니케이션 서비스, 콘텐츠 저장, 가족 공유 기능 제공
+- 안내 및 마케팅: 서비스 업데이트 안내, 이벤트 정보 제공
+
+제3조 (개인정보의 보유 및 이용기간)
+회사는 원칙적으로 개인정보 수집 및 이용목적이 달성된 후에는 해당 정보를 지체 없이 파기합니다. 단, 관계법령의 규정에 의하여 보존할 필요가 있는 경우 일정한 기간 동안 정보보관을 합니다.
+- 대금결제 및 재화 등의 공급/청약철회 기록: 5년
+- 소비자의 불만 또는 분쟁처리 기록: 3년
+- 웹사이트 방문/앱 접속 기록: 3개월
+
+제4조 (개인정보의 처리위탁)
+회사는 원활한 업무처리를 위하여 다음과 같이 개인정보 처리업무를 위탁하고 있습니다.
+- Google (구글): 인증, 데이터 저장 및 광고 분석 등
+- Supabase Inc., Cloudflare Inc.: 데이터베이스 저장, 계정 인증 관리, 웹 호스팅 등
+
+제5조 (개인정보의 제3자 제공)
+회사는 원칙적으로 제3자에게 회원 정보를 제공하지 않습니다.
+
+제6조 (개인정보의 국외 이전)
+회사는 해외 클라우드 서비스를 이용하고 있어 데이터가 국외(미국, 싱가포르 등)로 보관될 수 있습니다. (Supabase, Cloudflare 등)
+
+제7조 (개인정보의 파기 절차 및 방법)
+이용자가 입력한 정보는 목적 달성 후 내부 방침 및 기타 관련 법령에 따라 파기됩니다. 전자적 파일 형태의 정보는 복구할 수 없는 방식으로 삭제합니다.
+
+제8조 (정보주체의 권리와 행사 방법)
+정보주체는 언제든지 개인정보 열람·정정·삭제 요구 등의 권리를 행사할 수 있습니다(고객센터 이메일 또는 앱 내 설정).
+본 서비스는 만 14세 미만 아동의 회원가입을 제한하고 있습니다.
+
+제9조 (개인정보 보호책임자 및 담당자)
+성명: 정창우 | 직책: 유진에이아이(YujinAI) 대표
+이메일: yujinit2005@gmail.com
+연락처: 010-6614-4561
+
+제10조 (권익침해 구제방법)
+개인정보침해로 인한 구제를 위하여 전문 기관에 상담을 신청할 수 있습니다.
+- 개인정보침해신고센터: 118
+- 개인정보분쟁조정위원회: 1833-6972
+`;
+
+export default function PrivacyScreen() {
+    const router = useRouter();
+
+    return (
+        <SafeAreaView style={commonStyles.container} edges={['top']}>
+            <View style={styles.header}>
+                <Pressable onPress={() => router.back()} style={styles.backButton}>
+                    <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
+                </Pressable>
+                <Text style={styles.headerTitle}>개인정보처리방침</Text>
+                <View style={{ width: 24 }} />
+            </View>
+
+            <ScrollView style={styles.content} contentContainerStyle={{ paddingBottom: 40 }}>
+                <Text style={styles.paragraph}>{PRIVACY_TEXT}</Text>
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: colors.border,
+        backgroundColor: colors.background,
+    },
+    backButton: {
+        padding: 4,
+    },
+    headerTitle: {
+        ...typography.h2,
+        fontSize: 18,
+    },
+    content: {
+        flex: 1,
+        padding: spacing.lg,
+    },
+    paragraph: {
+        ...typography.body,
+        fontSize: 14,
+        lineHeight: 22,
+        color: colors.textSecondary,
+    },
+});
