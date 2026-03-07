@@ -204,13 +204,11 @@ export default function FamilyManagementScreen() {
             }));
             setMembers(guardiansWithCodes);
 
-            // 4. Get pending invitations for all guardians in my groups
-            const allGuardianIdsInMyGroups = formattedGuardians.map((g: any) => g.profile?.id).filter((id: any) => id);
-
+            // 4. Get pending invitations (Only for the person who generated it)
             const { data: invites, error: inviteError } = await supabase
                 .from('parent_invitations')
                 .select('*')
-                .in('inviter_id', allGuardianIdsInMyGroups)
+                .eq('inviter_id', user.id)
                 .eq('status', 'pending');
 
             if (inviteError) console.error('Error fetching invites:', inviteError);
