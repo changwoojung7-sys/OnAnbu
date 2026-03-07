@@ -379,24 +379,37 @@ export default function FamilyManagementScreen() {
 
     const renderParent = ({ item }: { item: any }) => {
         const isSelected = item.group_id === selectedGroupId;
+        const isWithdrawn = item.email?.endsWith('@withdrawn.local');
+
         return (
             <Pressable
-                style={[styles.memberCard, styles.parentCard, isSelected && styles.selectedParentCard]}
-                onPress={() => setSelectedGroupId(item.group_id)}
+                style={[
+                    styles.memberCard,
+                    styles.parentCard,
+                    isSelected && styles.selectedParentCard,
+                    isWithdrawn && { opacity: 0.6 }
+                ]}
+                onPress={() => !isWithdrawn && setSelectedGroupId(item.group_id)}
             >
-                <View style={[styles.avatarContainer, { backgroundColor: colors.action }]}>
+                <View style={[styles.avatarContainer, { backgroundColor: isWithdrawn ? colors.textLight : colors.action }]}>
                     <Text style={styles.avatarText}>{item.name?.[0] || '?'}</Text>
                 </View>
                 <View style={styles.memberInfo}>
                     <View style={styles.nameRow}>
                         <Text style={styles.memberName}>{item.name}</Text>
-                        <View style={styles.statusBadgeJoined}>
-                            <Text style={styles.statusBadgeText}>가입완료</Text>
-                        </View>
+                        {isWithdrawn ? (
+                            <View style={styles.statusBadgeWithdrawn}>
+                                <Text style={styles.statusBadgeText}>탈퇴</Text>
+                            </View>
+                        ) : (
+                            <View style={styles.statusBadgeJoined}>
+                                <Text style={styles.statusBadgeText}>가입완료</Text>
+                            </View>
+                        )}
                     </View>
                     <View style={styles.roleContainer}>
-                        <Text style={styles.memberRole}>케어대상</Text>
-                        {item.invite_codes && item.invite_codes.length > 0 && (
+                        <Text style={styles.memberRole}>{isWithdrawn ? '관리 대상 제외' : '케어대상'}</Text>
+                        {!isWithdrawn && item.invite_codes && item.invite_codes.length > 0 && (
                             <Pressable
                                 style={styles.copyBadgeContainer}
                                 onPress={() => copyToClipboard(item.invite_codes[0])}
@@ -624,5 +637,6 @@ const styles = StyleSheet.create({
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
     statusBadgeJoined: { backgroundColor: colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     statusBadgePending: { backgroundColor: colors.textSecondary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    statusBadgeWithdrawn: { backgroundColor: colors.error, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     statusBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
 });
