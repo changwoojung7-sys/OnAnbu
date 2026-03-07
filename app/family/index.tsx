@@ -147,16 +147,18 @@ export default function FamilyManagementScreen() {
                         // 부모님 가입 시 사용했던 초대 코드 매칭 (parent_invitations)
                         const { data: parentInvites } = await supabase
                             .from('parent_invitations')
-                            .select('invite_code, accepted_by')
-                            .in('accepted_by', uniqueParents.map(p => p.id))
-                            .eq('status', 'accepted');
+                            .select('invite_code, accepted_by, status') // status 필드 추가
+                            .in('accepted_by', uniqueParents.map(p => p.id));
+                        // .eq('status', 'accepted') 를 제거하여 cancelled 상태도 가져옴
 
                         const parentsWithCodes = uniqueParents.map(p => {
                             const groupOfParent = groupData?.find((g: any) => g.parent_id === p.id);
+                            const invites = parentInvites?.filter((i: any) => i.accepted_by === p.id) || [];
                             return {
                                 ...p,
                                 group_id: groupOfParent?.id,
-                                invite_codes: parentInvites?.filter((i: any) => i.accepted_by === p.id).map((i: any) => i.invite_code) || []
+                                invite_codes: invites.map((i: any) => i.invite_code),
+                                invitation_status: invites.length > 0 ? invites[0].status : 'unknown' // 초대 상태 저장
                             };
                         });
 
@@ -379,7 +381,8 @@ export default function FamilyManagementScreen() {
 
     const renderParent = ({ item }: { item: any }) => {
         const isSelected = item.group_id === selectedGroupId;
-        const isWithdrawn = item.email?.endsWith('@withdrawn.local');
+        // 이메일이 난수화되었거나, 초대장 상태가 cancelled이면 탈퇴로 간주
+        const isWithdrawn = item.email?.endsWith('@withdrawn.local') || item.invitation_status === 'cancelled';
 
         return (
             <Pressable
