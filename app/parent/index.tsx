@@ -272,7 +272,7 @@ export default function ParentHomeScreen() {
             }
 
             setAlreadyAwake(true);
-            triggerSuccessToast(`${guardianName}님께 소중한 기상 안부가 전해졌어요! ☀️`);
+            triggerSuccessToast(`${user?.name || '부모님'}님이 보낸 기상 소식이 잘 전달되었습니다! ☀️`);
         } catch (error: any) {
             console.error('[Parent] Awake error:', error);
             Alert.alert('오류', `알림 전송 실패: ${error?.message || '알 수 없는 오류'}`);
@@ -412,7 +412,7 @@ export default function ParentHomeScreen() {
 
             if (logError) throw logError;
 
-            triggerSuccessToast(`${guardianName}님께 ${isVideo ? '동영상' : '사진'} 안부가 잘 전달되었어요! 💌`);
+            triggerSuccessToast(`${user?.name || '부모님'}님이 보낸 ${isVideo ? '동영상' : '사진'} 안부가 잘 전달되었습니다! 💌`);
             fetchPendingActions(); // 목록 갱신 시도
         } catch (error: any) {
             console.error('Photo send error:', error);
@@ -500,7 +500,7 @@ export default function ParentHomeScreen() {
 
             if (logError) throw logError;
 
-            triggerSuccessToast(`${guardianName}님께 목소리 안부가 따뜻하게 전달되었어요! 🎤`);
+            triggerSuccessToast(`${user?.name || '부모님'}님이 보낸 목소리 안부가 따뜻하게 전달되었습니다! 🎤`);
             fetchPendingActions(); // 목록 갱신 시도
         } catch (error: any) {
             console.error('Voice send error:', error);
@@ -551,14 +551,6 @@ export default function ParentHomeScreen() {
             <View style={styles.mainContainer}>
                 {/* Header */}
                 <View style={styles.header}>
-                    {/* 전송 완료 토스트 */}
-                    {showSuccessToast && (
-                        <Animated.View style={[styles.successToast, { opacity: toastOpacity }]}>
-                            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
-                            <Text style={styles.successToastText}>{successMessage}</Text>
-                        </Animated.View>
-                    )}
-
                     <View style={{ flex: 1, paddingRight: spacing.sm }}>
                         <Text style={styles.greeting}>안녕하세요, {user?.name || '사용자'}님 🌸</Text>
                         <Text style={styles.subGreeting}>
@@ -696,9 +688,21 @@ export default function ParentHomeScreen() {
                     )}
                 </View>
 
+                {/* 전송 완료 토스트 (안부 보내기 바로 위 위치) */}
+                {showSuccessToast && (
+                    <View style={styles.toastContainer}>
+                        <Animated.View style={[styles.successToast, { opacity: toastOpacity }]}>
+                            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                            <Text style={styles.successToastText}>{successMessage}</Text>
+                        </Animated.View>
+                    </View>
+                )}
+
                 {/* Send Media Section */}
                 <View style={styles.bottomSection}>
-                    <Text style={styles.sectionTitle}>💝 안부 보내기</Text>
+                    <View style={{ marginBottom: spacing.xs }}>
+                        <Text style={styles.sectionTitle}>💝 안부 보내기</Text>
+                    </View>
 
                     {sendingMedia && (
                         <View style={styles.sendingOverlay}>
@@ -746,7 +750,7 @@ export default function ParentHomeScreen() {
                     </View>
                 </View>
             </View>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 
@@ -840,28 +844,28 @@ const styles = StyleSheet.create({
         color: colors.textSecondary,
     },
     // Success Toast
+    toastContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: spacing.xs,
+        height: 32, // 고정 높이로 레이아웃 흔들림 방지
+    },
     successToast: {
-        position: 'absolute',
-        top: -10,
-        left: 0,
-        right: 0,
         backgroundColor: '#E8F5E9',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: spacing.sm,
-        paddingHorizontal: spacing.md,
+        paddingVertical: 6,
+        paddingHorizontal: 16,
         borderRadius: borderRadius.full,
-        zIndex: 1000,
         borderWidth: 1,
         borderColor: colors.success,
         ...softShadow,
     },
     successToastText: {
-        ...typography.body,
+        fontSize: 12,
         color: colors.success,
         fontWeight: 'bold',
-        marginLeft: spacing.xs,
+        marginLeft: 4,
     },
     // Sections
     section: {
