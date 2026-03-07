@@ -5,8 +5,8 @@ import * as FileSystem from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ActionCard } from '@/components/care';
@@ -29,6 +29,34 @@ export default function CareScreen() {
     const [groupId, setGroupId] = useState<string | null>(null);
     const [parentName, setParentName] = useState('어머니');
     const [isLoadingAd, setIsLoadingAd] = useState(false);
+
+    // Success Toast 상태
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+    const toastOpacity = useRef(new Animated.Value(0)).current;
+
+    const triggerSuccessToast = (message: string) => {
+        setSuccessMessage(message);
+        setShowSuccessToast(true);
+
+        // 페이드 인
+        Animated.timing(toastOpacity, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+        }).start(() => {
+            // 3초 대기 후 페이드 아웃
+            setTimeout(() => {
+                Animated.timing(toastOpacity, {
+                    toValue: 0,
+                    duration: 400,
+                    useNativeDriver: true,
+                }).start(() => {
+                    setShowSuccessToast(false);
+                });
+            }, 3000);
+        });
+    };
 
     // 모달 관리 상태 추가
     const [isTextModalVisible, setIsTextModalVisible] = useState(false);
@@ -251,15 +279,9 @@ export default function CareScreen() {
                 created_at: new Date().toISOString(),
                 played_at: null,
             });
-            if (Platform.OS !== 'web') {
-                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-            const userName = user?.name || '사용자';
-            if (Platform.OS === 'web') {
-                window.alert(`${userName} 님이 보낸 안부내용\n\n💌 ${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
-            } else {
-                Alert.alert(`${userName} 님이 보낸 안부내용`, `💌 ${parentName}께 마음이 담긴 안부 체크를 전했어요!`);
-            }
+            const userName = user?.name || '가족';
+            const toastMsg = `${userName}님이 보낸 안부가\n따뜻하게 전달되었습니다! 💝`;
+            triggerSuccessToast(toastMsg);
         } catch (err: any) {
             console.error('[Care] 예외:', err);
             Alert.alert('오류', '안부 전송 중 문제가 발생했습니다.');
@@ -432,6 +454,16 @@ export default function CareScreen() {
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
             >
+                {/* 전송 완료 토스트 */}
+                {showSuccessToast && (
+                    <View style={styles.toastContainer}>
+                        <Animated.View style={[styles.successToast, { opacity: toastOpacity }]}>
+                            <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                            <Text style={styles.successToastText}>{successMessage}</Text>
+                        </Animated.View>
+                    </View>
+                )}
+
                 <View style={styles.header}>
                     <Text style={styles.title}>{strings.care.title}</Text>
                     <Text style={styles.subtitle}>
@@ -769,4 +801,40 @@ const styles = StyleSheet.create({
         fontWeight: '700',
     },
 
+    // Toast Styles
+    toastContainer: {
+        position: 'absolute',
+        top: 20,
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 999,
+        paddingHorizontal: spacing.xl,
+    },
+    successToast: {
+        backgroundColor: '#E8F5E9',
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        borderRadius: 20,
+        borderWidth: 1.5,
+        borderColor: colors.success,
+        maxWidth: '100%',
+        shadowColor: colors.success,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 10,
+    },
+    successToastText: {
+        fontSize: 20,
+        color: colors.success,
+        fontWeight: 'bold',
+        marginLeft: 10,
+        textAlign: 'center',
+        flexShrink: 1,
+        lineHeight: 28,
+    },
 });
