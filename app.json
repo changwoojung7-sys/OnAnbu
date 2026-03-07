@@ -45,7 +45,7 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "2.0.0"
+            "kotlinVersion": "1.9.24"
           }
         }
       ]
