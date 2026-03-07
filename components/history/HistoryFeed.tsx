@@ -13,9 +13,7 @@ import { ActionLog } from '@/lib/types';
 import { useActionStore } from '@/stores/actionStore';
 import { useAuthStore } from '@/stores/authStore';
 
-const adUnitId = __DEV__
-    ? (Platform.OS === 'ios' ? 'ca-app-pub-3940256099942544/1712485313' : 'ca-app-pub-3940256099942544/5224354917')
-    : 'ca-app-pub-2810872681064029/3833978077';
+const adUnitId = 'ca-app-pub-2810872681064029/3833978077';
 
 interface HistoryFeedProps {
     hideHeader?: boolean;
