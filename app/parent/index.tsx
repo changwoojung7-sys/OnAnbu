@@ -692,7 +692,7 @@ export default function ParentHomeScreen() {
                 {showSuccessToast && (
                     <View style={styles.toastContainer}>
                         <Animated.View style={[styles.successToast, { opacity: toastOpacity }]}>
-                            <Ionicons name="checkmark-circle" size={16} color={colors.success} />
+                            <Ionicons name="checkmark-circle" size={24} color={colors.success} />
                             <Text style={styles.successToastText}>{successMessage}</Text>
                         </Animated.View>
                     </View>
@@ -847,25 +847,29 @@ const styles = StyleSheet.create({
     toastContainer: {
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: spacing.xs,
-        height: 32, // 고정 높이로 레이아웃 흔들림 방지
+        marginBottom: spacing.md,
+        paddingHorizontal: spacing.lg,
     },
     successToast: {
         backgroundColor: '#E8F5E9',
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 6,
-        paddingHorizontal: 16,
-        borderRadius: borderRadius.full,
-        borderWidth: 1,
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        borderWidth: 1.5,
         borderColor: colors.success,
+        maxWidth: '100%',
         ...softShadow,
     },
     successToastText: {
-        fontSize: 12,
+        fontSize: 20,
         color: colors.success,
         fontWeight: 'bold',
-        marginLeft: 4,
+        marginLeft: 8,
+        textAlign: 'center',
+        flexShrink: 1,
+        lineHeight: 28,
     },
     // Sections
     section: {
