@@ -204,11 +204,13 @@ export default function FamilyManagementScreen() {
             }));
             setMembers(guardiansWithCodes);
 
-            // 4. Get pending invitations
+            // 4. Get pending invitations for all guardians in my groups
+            const allGuardianIdsInMyGroups = formattedGuardians.map((g: any) => g.profile?.id).filter((id: any) => id);
+
             const { data: invites, error: inviteError } = await supabase
                 .from('parent_invitations')
                 .select('*')
-                .eq('inviter_id', user.id)
+                .in('inviter_id', allGuardianIdsInMyGroups)
                 .eq('status', 'pending');
 
             if (inviteError) console.error('Error fetching invites:', inviteError);
@@ -388,7 +390,12 @@ export default function FamilyManagementScreen() {
                     <Text style={styles.avatarText}>{item.name?.[0] || '?'}</Text>
                 </View>
                 <View style={styles.memberInfo}>
-                    <Text style={styles.memberName}>{item.name}</Text>
+                    <View style={styles.nameRow}>
+                        <Text style={styles.memberName}>{item.name}</Text>
+                        <View style={styles.statusBadgeJoined}>
+                            <Text style={styles.statusBadgeText}>가입완료</Text>
+                        </View>
+                    </View>
                     <View style={styles.roleContainer}>
                         <Text style={styles.memberRole}>케어대상</Text>
                         {item.invite_codes && item.invite_codes.length > 0 && (
@@ -407,13 +414,27 @@ export default function FamilyManagementScreen() {
     };
 
     const renderPendingInvite = ({ item }: { item: any }) => (
-        <View style={[styles.memberCard, { opacity: 0.7 }]}>
+        <View style={[styles.memberCard, { opacity: 0.85, borderStyle: 'dashed', borderWidth: 1, borderColor: colors.textLight }]}>
             <View style={[styles.avatarContainer, { backgroundColor: colors.textLight }]}>
                 <Ionicons name="mail-outline" size={24} color="white" />
             </View>
             <View style={styles.memberInfo}>
-                <Text style={styles.memberName}>{item.parent_name} (초대 중)</Text>
-                <Text style={styles.memberRole}>코드: {item.invite_code}</Text>
+                <View style={styles.nameRow}>
+                    <Text style={styles.memberName}>{item.parent_name}</Text>
+                    <View style={styles.statusBadgePending}>
+                        <Text style={styles.statusBadgeText}>초대 중</Text>
+                    </View>
+                </View>
+                <View style={styles.roleContainer}>
+                    <Text style={styles.memberRole}>케어대상</Text>
+                    <Pressable
+                        style={styles.copyBadgeContainer}
+                        onPress={() => copyToClipboard(item.invite_code)}
+                    >
+                        <Text style={[styles.codeBadge, styles.codeBadgeLarge, { color: colors.textSecondary, backgroundColor: '#f5f5f5' }]}>#{item.invite_code}</Text>
+                        <Ionicons name="copy-outline" size={14} color={colors.textSecondary} style={{ marginLeft: 4 }} />
+                    </Pressable>
+                </View>
             </View>
         </View>
     );
@@ -445,18 +466,30 @@ export default function FamilyManagementScreen() {
                                 <Text style={styles.addByCodeButtonText}>케어대상 초대코드로 등록</Text>
                             </Pressable>
                         </View>
-                        {parents.length > 0 ? (
-                            <View>
-                                <FlatList data={parents} renderItem={renderParent} keyExtractor={item => item.id} scrollEnabled={false} />
-                                <Pressable style={styles.inviteParentButton} onPress={handleInviteParent}>
-                                    <Ionicons name="person-add" size={20} color={colors.textWhite} />
-                                    <Text style={styles.inviteButtonText}>신규 케어대상 초대코드 생성하기</Text>
-                                </Pressable>
+                        {parents.length === 0 && pendingInvites.length === 0 ? (
+                            <View style={styles.emptyBox}>
+                                <Text style={styles.emptyText}>연결된 케어대상이 없습니다.</Text>
+                                <View style={styles.emptyButtonRow}>
+                                    <Pressable style={styles.inviteButtonSmall} onPress={handleInviteParent}>
+                                        <Text style={styles.inviteButtonTextSmall}>+ 직접 관리</Text>
+                                    </Pressable>
+                                    <Pressable style={[styles.inviteButtonSmall, { backgroundColor: colors.action }]} onPress={() => setIsCodeModalVisible(true)}>
+                                        <Text style={styles.inviteButtonTextSmall}>초대코드로 등록</Text>
+                                    </Pressable>
+                                </View>
                             </View>
                         ) : (
                             <View>
+                                {parents.length > 0 && (
+                                    <FlatList
+                                        data={parents}
+                                        renderItem={renderParent}
+                                        keyExtractor={item => item.id}
+                                        scrollEnabled={false}
+                                    />
+                                )}
                                 {pendingInvites.length > 0 && (
-                                    <View style={{ marginBottom: 16 }}>
+                                    <View style={{ marginTop: parents.length > 0 ? 8 : 0 }}>
                                         <FlatList
                                             data={pendingInvites}
                                             renderItem={renderPendingInvite}
@@ -465,17 +498,10 @@ export default function FamilyManagementScreen() {
                                         />
                                     </View>
                                 )}
-                                <View style={styles.emptyBox}>
-                                    <Text style={styles.emptyText}>연결된 케어대상이 없습니다.</Text>
-                                    <View style={styles.emptyButtonRow}>
-                                        <Pressable style={styles.inviteButtonSmall} onPress={handleInviteParent}>
-                                            <Text style={styles.inviteButtonTextSmall}>+ 직접 관리</Text>
-                                        </Pressable>
-                                        <Pressable style={[styles.inviteButtonSmall, { backgroundColor: colors.action }]} onPress={() => setIsCodeModalVisible(true)}>
-                                            <Text style={styles.inviteButtonTextSmall}>초대코드로 등록</Text>
-                                        </Pressable>
-                                    </View>
-                                </View>
+                                <Pressable style={styles.inviteParentButton} onPress={handleInviteParent}>
+                                    <Ionicons name="person-add" size={20} color={colors.textWhite} />
+                                    <Text style={styles.inviteButtonText}>신규 케어대상 초대코드 생성하기</Text>
+                                </Pressable>
                             </View>
                         )}
                     </View>
@@ -597,4 +623,8 @@ const styles = StyleSheet.create({
     selectedParentCard: { borderColor: colors.primary, backgroundColor: '#f0fdf4', borderWidth: 2 },
     removeButton: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.background, borderRadius: 6 },
     removeButtonText: { fontSize: 13, color: 'red', fontWeight: 'bold' },
+    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+    statusBadgeJoined: { backgroundColor: colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    statusBadgePending: { backgroundColor: colors.textSecondary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
+    statusBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
 });
