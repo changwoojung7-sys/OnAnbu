@@ -851,22 +851,26 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.lg,
     },
     successToast: {
-        backgroundColor: '#E8F5E9',
+        backgroundColor: '#EDF2EF', // 브랜드 딥그린의 아주 연한 톤
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
+        paddingVertical: 14,
+        paddingHorizontal: 24,
         borderRadius: 20,
         borderWidth: 1.5,
-        borderColor: colors.success,
+        borderColor: colors.primary, // 딥그린 테두리
         maxWidth: '100%',
-        ...softShadow,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.2,
+        shadowRadius: 10,
+        elevation: 10,
     },
     successToastText: {
         fontSize: 20,
-        color: colors.success,
+        color: colors.primary, // 텍스트도 딥그린으로 통일
         fontWeight: 'bold',
-        marginLeft: 8,
+        marginLeft: 10,
         textAlign: 'center',
         flexShrink: 1,
         lineHeight: 28,

@@ -873,10 +873,10 @@ const styles = StyleSheet.create({
         height: 120, // 삭제된 카드의 대략적인 높이 유지
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#f8f9fa',
+        backgroundColor: '#EDF2EF', // 브랜드 딥그린의 아주 연한 톤
         borderRadius: borderRadius.xl,
-        borderWidth: 1,
-        borderColor: colors.borderLight,
+        borderWidth: 1.5,
+        borderColor: colors.primary, // 딥그린 테두리
         borderStyle: 'dashed',
     },
     deleteToast: {
@@ -884,12 +884,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 12,
         paddingHorizontal: 20,
-        backgroundColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: 'rgba(255,255,255,0.6)',
         borderRadius: 30,
     },
     deleteToastText: {
         fontSize: 20,
-        color: colors.textSecondary,
+        color: colors.primary, // 텍스트도 딥그린으로 통일
         fontWeight: '700',
         marginLeft: 10,
         textAlign: 'center',
