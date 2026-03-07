@@ -362,43 +362,26 @@ export default function FamilyManagementScreen() {
         setIsDeleteModalVisible(true);
     };
 
-    const handleDeleteParent = async (option: 'full' | 'list') => {
+    const handleDeleteParent = async () => {
         if (!selectedParentToDelete) return;
 
         setIsDeleting(true);
         try {
-            if (option === 'full') {
-                // 부모님 완전 삭제 (Edge Function 호출 - 기록 및 미디어 포함)
-                // 여기서 withdraw-parent를 활용하거나 별도 RPC/Function 연동
-                const { error } = await supabase.functions.invoke('withdraw-parent', {
-                    body: {
-                        p_option: 2, // 2: Full Delete
-                        p_parent_id: selectedParentToDelete.id // 관리자가 삭제하는 경우를 위해 ID 전달
-                    }
-                });
-                if (error) throw error;
-            } else {
-                // 목록에서만 숨기기 (초대 기록 cancelled 처리 및 그룹 연결 해제)
-                const { error: inviteError } = await supabase
-                    .from('parent_invitations')
-                    .update({ status: 'cancelled' })
-                    .eq('accepted_by', selectedParentToDelete.id);
+            // 부모님 완전 삭제 (Edge Function 호출 - 기록 및 미디어 포함)
+            const { error } = await supabase.functions.invoke('withdraw-parent', {
+                body: {
+                    p_option: 2, // 2: Full Delete
+                    p_parent_id: selectedParentToDelete.id
+                }
+            });
+            if (error) throw error;
 
-                if (inviteError) throw inviteError;
-
-                // 그룹에서 나(주케어자)도 제거하여 연결 고리 끊기
-                await supabase.from('family_members')
-                    .delete()
-                    .eq('group_id', selectedParentToDelete.group_id)
-                    .eq('guardian_id', user?.id);
-            }
-
-            Alert.alert('성공', '케어대상 정보가 정상적으로 정리되었습니다.');
+            Alert.alert('성공', '케어대상 정보 및 모든 활동 기록이 영구적으로 파기되었습니다.');
             setIsDeleteModalVisible(false);
             fetchFamilyData();
         } catch (err: any) {
             console.error('Delete Parent Error:', err);
-            Alert.alert('오류', '정보 정리 중 문제가 발생했습니다.');
+            Alert.alert('오류', '정보 파기 중 문제가 발생했습니다.');
         } finally {
             setIsDeleting(false);
         }
@@ -686,28 +669,22 @@ export default function FamilyManagementScreen() {
             >
                 <View style={styles.deleteModalOverlay}>
                     <View style={[styles.deleteModalContent, { backgroundColor: '#1E293B' }]}>
-                        <Text style={styles.deleteModalTitle}>케어대상 정보 정리</Text>
+                        <Text style={styles.deleteModalTitle}>데이터 영구 삭제</Text>
                         <Text style={styles.deleteModalSubtitle}>
-                            탈퇴한 {selectedParentToDelete?.name}님의 정보를{"\n"}목록에서 어떻게 정리할까요?
+                            탈퇴한 {selectedParentToDelete?.name}님의 정보와{"\n"}
+                            <Text style={{ color: colors.error, fontWeight: 'bold' }}>모든 활동 기록(사진, 메시지 등)</Text>을{"\n"}
+                            영구히 파기하시겠습니까? 이 작업은 되돌릴 수 없습니다.
                         </Text>
 
                         <TouchableOpacity
-                            style={[styles.deleteModalButton, { backgroundColor: '#475569' }]}
-                            onPress={() => handleDeleteParent('list')}
-                            disabled={isDeleting}
-                        >
-                            <Text style={styles.deleteModalButtonText}>목록에서만 삭제 (추억 데이터 보존)</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.deleteModalButton, { backgroundColor: colors.error, marginTop: spacing.md }]}
-                            onPress={() => handleDeleteParent('full')}
+                            style={[styles.deleteModalButton, { backgroundColor: colors.error }]}
+                            onPress={() => handleDeleteParent()}
                             disabled={isDeleting}
                         >
                             {isDeleting ? (
                                 <ActivityIndicator color="white" />
                             ) : (
-                                <Text style={styles.deleteModalButtonText}>모든 기록까지 영구 파기</Text>
+                                <Text style={styles.deleteModalButtonText}>모든 기록 영구 파기</Text>
                             )}
                         </TouchableOpacity>
 
