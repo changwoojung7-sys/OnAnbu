@@ -1,12 +1,12 @@
 import { colors } from '@/constants/Colors';
-import { softShadow } from '@/constants/theme';
+import { borderRadius, softShadow, spacing, typography } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface FamilyMember {
@@ -35,6 +35,11 @@ export default function FamilyManagementScreen() {
     const [isCodeModalVisible, setIsCodeModalVisible] = useState(false);
     const [inviteCode, setInviteCode] = useState('');
     const [isProcessingCode, setIsProcessingCode] = useState(false);
+
+    // 탈퇴 케어대상 삭제 관련 상태
+    const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+    const [selectedParentToDelete, setSelectedParentToDelete] = useState<any>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -217,11 +222,9 @@ export default function FamilyManagementScreen() {
             if (invites) setPendingInvites(invites);
 
             setDebugInfo(JSON.stringify({
-                uniqueGroupIds,
+                uniqueGroupIds: uniqueGroupIds || [],
                 groupDataLength: localGroupData?.length || 0,
-                groupData: localGroupData,
                 fetchedParentsLength: localFetchedParents?.length || 0,
-                fetchedParents: localFetchedParents,
             }, null, 2));
 
         } catch (error: any) {
@@ -288,8 +291,21 @@ export default function FamilyManagementScreen() {
                     p_group_id: group_id,
                     p_guardian_id: guardian_id
                 });
-                if (error) throw error;
                 if (data && data.success) {
+                    // 보조 케어자 내보내기 시 알림 생성 (자신이 나가는 경우가 아닐 때)
+                    if (!isSelf && user?.id) {
+                        try {
+                            await supabase.from('notifications').insert({
+                                user_id: guardian_id,
+                                title: '가족 그룹 제외 알림',
+                                content: `${user?.name || '관리자'}에 의해 가족 그룹에서 제외되었습니다.`,
+                                type: 'system'
+                            });
+                        } catch (notifyErr) {
+                            console.error('Failed to send notification:', notifyErr);
+                        }
+                    }
+
                     if (Platform.OS === 'web') {
                         window.alert(data.message);
                     } else {
@@ -325,6 +341,66 @@ export default function FamilyManagementScreen() {
                 { text: '취소', style: 'cancel' },
                 { text: '확인', style: 'destructive', onPress: executeRemoval }
             ]);
+        }
+    };
+
+    // 탈퇴한 케어대상 삭제 로직
+    const initiateDeleteParent = (parent: any) => {
+        // 해당 그룹의 보조 케어자들 확인 (나 제외)
+        const otherMembers = members.filter(m => m.group_id === parent.group_id && m.guardian_id !== user?.id);
+
+        if (otherMembers.length > 0) {
+            const memberNames = otherMembers.map(m => m.profile?.name || '가족').join(', ');
+            Alert.alert(
+                '삭제 불가',
+                `아직 그룹에 참여 중인 보조 케어자가 있습니다.\n(${memberNames})\n\n모든 보조 케어자를 내보낸 후에 삭제할 수 있습니다.`
+            );
+            return;
+        }
+
+        setSelectedParentToDelete(parent);
+        setIsDeleteModalVisible(true);
+    };
+
+    const handleDeleteParent = async (option: 'full' | 'list') => {
+        if (!selectedParentToDelete) return;
+
+        setIsDeleting(true);
+        try {
+            if (option === 'full') {
+                // 부모님 완전 삭제 (Edge Function 호출 - 기록 및 미디어 포함)
+                // 여기서 withdraw-parent를 활용하거나 별도 RPC/Function 연동
+                const { error } = await supabase.functions.invoke('withdraw-parent', {
+                    body: {
+                        p_option: 2, // 2: Full Delete
+                        p_parent_id: selectedParentToDelete.id // 관리자가 삭제하는 경우를 위해 ID 전달
+                    }
+                });
+                if (error) throw error;
+            } else {
+                // 목록에서만 숨기기 (초대 기록 cancelled 처리 및 그룹 연결 해제)
+                const { error: inviteError } = await supabase
+                    .from('parent_invitations')
+                    .update({ status: 'cancelled' })
+                    .eq('accepted_by', selectedParentToDelete.id);
+
+                if (inviteError) throw inviteError;
+
+                // 그룹에서 나(주케어자)도 제거하여 연결 고리 끊기
+                await supabase.from('family_members')
+                    .delete()
+                    .eq('group_id', selectedParentToDelete.group_id)
+                    .eq('guardian_id', user?.id);
+            }
+
+            Alert.alert('성공', '케어대상 정보가 정상적으로 정리되었습니다.');
+            setIsDeleteModalVisible(false);
+            fetchFamilyData();
+        } catch (err: any) {
+            console.error('Delete Parent Error:', err);
+            Alert.alert('오류', '정보 정리 중 문제가 발생했습니다.');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -399,15 +475,29 @@ export default function FamilyManagementScreen() {
                 </View>
                 <View style={styles.memberInfo}>
                     <View style={styles.nameRow}>
-                        <Text style={styles.memberName}>{item.name}</Text>
-                        {isWithdrawn ? (
-                            <View style={styles.statusBadgeWithdrawn}>
-                                <Text style={styles.statusBadgeText}>탈퇴</Text>
+                        <View style={{ flex: 1 }}>
+                            <View style={styles.nameBadgeRow}>
+                                <Text style={styles.memberName}>{item.name}</Text>
+                                {isWithdrawn ? (
+                                    <View style={styles.statusBadgeWithdrawn}>
+                                        <Text style={styles.statusBadgeText}>탈퇴</Text>
+                                    </View>
+                                ) : (
+                                    <View style={styles.statusBadgeJoined}>
+                                        <Text style={styles.statusBadgeText}>가입완료</Text>
+                                    </View>
+                                )}
                             </View>
-                        ) : (
-                            <View style={styles.statusBadgeJoined}>
-                                <Text style={styles.statusBadgeText}>가입완료</Text>
-                            </View>
+                        </View>
+
+                        {/* 탈퇴한 경우 삭제 버튼 표시 */}
+                        {isWithdrawn && (
+                            <TouchableOpacity
+                                style={styles.deleteIconButton}
+                                onPress={() => initiateDeleteParent(item)}
+                            >
+                                <Ionicons name="trash-outline" size={22} color={colors.error} />
+                            </TouchableOpacity>
                         )}
                     </View>
                     <View style={styles.roleContainer}>
@@ -587,6 +677,50 @@ export default function FamilyManagementScreen() {
                     </View>
                 </View>
             </Modal>
+            {/* 삭제 옵션 모달 */}
+            <Modal
+                visible={isDeleteModalVisible}
+                transparent={true}
+                animationType="fade"
+                onRequestClose={() => !isDeleting && setIsDeleteModalVisible(false)}
+            >
+                <View style={styles.deleteModalOverlay}>
+                    <View style={[styles.deleteModalContent, { backgroundColor: '#1E293B' }]}>
+                        <Text style={styles.deleteModalTitle}>케어대상 정보 정리</Text>
+                        <Text style={styles.deleteModalSubtitle}>
+                            탈퇴한 {selectedParentToDelete?.name}님의 정보를{"\n"}목록에서 어떻게 정리할까요?
+                        </Text>
+
+                        <TouchableOpacity
+                            style={[styles.deleteModalButton, { backgroundColor: '#475569' }]}
+                            onPress={() => handleDeleteParent('list')}
+                            disabled={isDeleting}
+                        >
+                            <Text style={styles.deleteModalButtonText}>목록에서만 삭제 (추억 데이터 보존)</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={[styles.deleteModalButton, { backgroundColor: colors.error, marginTop: spacing.md }]}
+                            onPress={() => handleDeleteParent('full')}
+                            disabled={isDeleting}
+                        >
+                            {isDeleting ? (
+                                <ActivityIndicator color="white" />
+                            ) : (
+                                <Text style={styles.deleteModalButtonText}>모든 기록까지 영구 파기</Text>
+                            )}
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.deleteCancelButton}
+                            onPress={() => setIsDeleteModalVisible(false)}
+                            disabled={isDeleting}
+                        >
+                            <Text style={styles.deleteCancelButtonText}>취소</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 }
@@ -637,9 +771,63 @@ const styles = StyleSheet.create({
     selectedParentCard: { borderColor: colors.primary, backgroundColor: '#f0fdf4', borderWidth: 2 },
     removeButton: { paddingHorizontal: 12, paddingVertical: 6, backgroundColor: colors.background, borderRadius: 6 },
     removeButtonText: { fontSize: 13, color: 'red', fontWeight: 'bold' },
-    nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
+    nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
+    nameBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    deleteIconButton: { padding: 4 },
     statusBadgeJoined: { backgroundColor: colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     statusBadgePending: { backgroundColor: colors.textSecondary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     statusBadgeWithdrawn: { backgroundColor: colors.error, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     statusBadgeText: { color: 'white', fontSize: 10, fontWeight: 'bold' },
+
+    // 탈퇴 케어대상 삭제 모달 Styles
+    deleteModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: spacing.xl,
+    },
+    deleteModalContent: {
+        width: '100%',
+        borderRadius: borderRadius.lg,
+        padding: spacing.xl,
+        alignItems: 'center',
+    },
+    deleteModalTitle: {
+        ...typography.h2,
+        color: '#fff',
+        marginBottom: spacing.sm,
+    },
+    deleteModalSubtitle: {
+        ...typography.body,
+        color: '#94A3B8',
+        textAlign: 'center',
+        marginBottom: spacing.xl,
+        lineHeight: 20,
+    },
+    deleteModalButton: {
+        width: '100%',
+        paddingVertical: 14,
+        borderRadius: borderRadius.md,
+        alignItems: 'center',
+    },
+    deleteModalButtonText: {
+        ...typography.body,
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    deleteCancelButton: {
+        width: '100%',
+        paddingVertical: 14,
+        marginTop: spacing.md,
+        borderRadius: borderRadius.md,
+        borderWidth: 1,
+        borderColor: '#475569',
+        alignItems: 'center',
+    },
+    deleteCancelButtonText: {
+        ...typography.body,
+        color: '#94A3B8',
+        fontWeight: '600',
+    },
 });
