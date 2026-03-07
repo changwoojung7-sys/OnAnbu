@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, Modal, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -116,9 +116,10 @@ export default function LoginScreen() {
                         ]
                     );
                 } else if (error.message?.includes('Invalid login credentials')) {
-                    Alert.alert('로그인 실패', '이메일 또는 비밀번호가 일치하지 않습니다.');
+                    // 인라인 에러 메시지로 표시 (Alert 대신)
+                    setLoginError('이메일(또는 초대코드) 또는 비밀번호가 일치하지 않습니다.');
                 } else {
-                    Alert.alert('로그인 실패', `오류: ${error.message}`);
+                    setLoginError(`로그인 오류: ${error.message}`);
                 }
                 return;
             }
@@ -391,7 +392,20 @@ export default function LoginScreen() {
                             </Pressable>
                         </View>
                     </View>
-                    <Pressable style={styles.forgotPassword} onPress={() => setResetStep('email')}>
+                    <Pressable style={styles.forgotPassword} onPress={() => {
+                        const loginEmail = email.trim();
+                        // 초대코드(6자리) 계정인 경우: 이메일 재설정 불가 -> 자녀에게 요청 안내
+                        if (loginEmail.length === 6 && !loginEmail.includes('@')) {
+                            const msg = '초대코드로 가입하신 분은 이메일 재설정이 불가합니다.\n\n자녀분(주케어자)에게 연락하여\n앱 [가족 관리] 화면에서 비밀번호 초기화를 요청해주세요.\n\n자녀분이 🔑 아이콘을 눌러 임시 비밀번호를 발급해 전달해드릴 수 있습니다.';
+                            if (Platform.OS === 'web') {
+                                window.alert(msg);
+                            } else {
+                                Alert.alert('비밀번호 초기화 방법', msg, [{ text: '확인' }]);
+                            }
+                        } else {
+                            setResetStep('email');
+                        }
+                    }}>
                         <Text style={styles.forgotPasswordText}>비밀번호를 잊으셨나요?</Text>
                     </Pressable>
                 </View>

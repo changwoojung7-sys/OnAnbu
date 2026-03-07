@@ -3,7 +3,7 @@ import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -369,6 +369,21 @@ export default function ParentHomeScreen() {
             setSendingMedia(true);
 
             const asset = result.assets[0];
+            
+            // 50MB 용량 제한 체크
+            const MAX_SIZE_BYTES = 50 * 1024 * 1024;
+            let fileSize = asset.fileSize; // Native
+            if (Platform.OS === 'web' && asset.file) {
+                fileSize = asset.file.size; // Web
+            }
+            if (fileSize && fileSize > MAX_SIZE_BYTES) {
+                Alert.alert('용량 초과', '50MB 이하의 파일만 전송할 수 있습니다.');
+                if (Platform.OS === 'web') {
+                    window.alert('50MB 이하의 파일만 전송할 수 있습니다.');
+                }
+                return;
+            }
+
             const isVideo = asset.type === 'video';
             // 웹 환경: blob URI에서 확장자를 추출할 수 없으므로 기본값 사용
             const isWebBlobUri = asset.uri.startsWith('blob:') || asset.uri.startsWith('data:');
@@ -379,13 +394,18 @@ export default function ParentHomeScreen() {
             const filePath = `parent-messages/${fileName}`;
             const mimeType = isVideo ? `video/${fileExt}` : `image/${fileExt}`;
 
-            // Supabase Storage에 업로드
-            const response = await fetch(asset.uri);
-            const blob = await response.blob();
+            // Supabase Storage에 업로드 (웹에서는 file 객체 직접 사용)
+            let fileData: Blob | File;
+            if (Platform.OS === 'web' && asset.file) {
+                fileData = asset.file;
+            } else {
+                const response = await fetch(asset.uri);
+                fileData = await response.blob();
+            }
 
             const { error: uploadError } = await supabase.storage
-                .from('media')
-                .upload(filePath, blob, {
+                .from('onanbu_media')
+                .upload(filePath, fileData, {
                     contentType: mimeType,
                     upsert: false,
                 });
@@ -394,7 +414,7 @@ export default function ParentHomeScreen() {
 
             // Public URL 가져오기
             const { data: urlData } = supabase.storage
-                .from('media')
+                .from('onanbu_media')
                 .getPublicUrl(filePath);
 
             const messageText = isVideo ? '🎥 동영상을 보냈습니다' : '📷 사진을 보냈습니다';
@@ -474,7 +494,7 @@ export default function ParentHomeScreen() {
             const blob = await response.blob();
 
             const { error: uploadError } = await supabase.storage
-                .from('media')
+                .from('onanbu_media')
                 .upload(filePath, blob, {
                     contentType: 'audio/m4a',
                     upsert: false,
@@ -484,7 +504,7 @@ export default function ParentHomeScreen() {
 
             // Public URL 가져오기
             const { data: urlData } = supabase.storage
-                .from('media')
+                .from('onanbu_media')
                 .getPublicUrl(filePath);
 
             // action_logs에 저장
@@ -548,7 +568,7 @@ export default function ParentHomeScreen() {
 
     return (
         <SafeAreaView style={commonStyles.container} edges={['top']}>
-            <View style={styles.mainContainer}>
+            <ScrollView style={styles.mainScrollView} contentContainerStyle={styles.mainContainer} showsVerticalScrollIndicator={false}>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={{ flex: 1, paddingRight: spacing.sm }}>
@@ -641,11 +661,7 @@ export default function ParentHomeScreen() {
                     </View>
 
                     {pendingActions.length > 0 ? (
-                        <ScrollView
-                            style={styles.actionsScrollView}
-                            contentContainerStyle={styles.actionsList}
-                            showsVerticalScrollIndicator={false}
-                        >
+                        <View style={styles.actionsList}>
                             {pendingActions.map((action) => (
                                 <Pressable
                                     key={action.id}
@@ -676,7 +692,7 @@ export default function ParentHomeScreen() {
                                     </View>
                                 </Pressable>
                             ))}
-                        </ScrollView>
+                        </View>
                     ) : (
                         <View style={styles.emptyContainer}>
                             <Text style={styles.emptyEmoji}>📭</Text>
@@ -749,15 +765,18 @@ export default function ParentHomeScreen() {
                         </Pressable>
                     </View>
                 </View>
-            </View>
+            </ScrollView>
         </SafeAreaView >
     );
 }
 
 const styles = StyleSheet.create({
-    mainContainer: {
+    mainScrollView: {
         flex: 1,
+    },
+    mainContainer: {
         padding: spacing.lg,
+        paddingBottom: spacing.xxl, // 추가적인 하단 여백 보장
     },
     header: {
         flexDirection: 'row',
@@ -883,11 +902,7 @@ const styles = StyleSheet.create({
         paddingBottom: spacing.sm,
     },
     pendingActionsSection: {
-        flex: 1,
         marginBottom: spacing.md,
-    },
-    actionsScrollView: {
-        flex: 1,
     },
     sectionTitle: {
         ...typography.h3,

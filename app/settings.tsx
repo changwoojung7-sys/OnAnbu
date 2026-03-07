@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -54,7 +54,7 @@ export default function SettingsScreen() {
                 <View style={{ width: 24 }} />
             </View>
 
-            <View style={styles.content}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: spacing.lg }}>
                 <View style={styles.profileCard}>
                     <View style={styles.avatar}>
                         {user?.avatar_url ? (
@@ -114,7 +114,8 @@ export default function SettingsScreen() {
                     </Pressable>
                 </View>
 
-                <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 10 }}>
+                {/* 로그아웃 / 회원탈퇴 - 개인정보처리방침 바로 아래에 배치 */}
+                <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 4, marginBottom: spacing.xl }}>
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.6}>
                         <Text style={styles.logoutText}>로그아웃</Text>
                     </TouchableOpacity>
@@ -208,7 +209,7 @@ export default function SettingsScreen() {
                         </View>
                     </View>
                 </Modal>
-            </View>
+            </ScrollView>
         </SafeAreaView>
     );
 }

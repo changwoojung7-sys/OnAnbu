@@ -88,12 +88,12 @@ export default function ParentSettingsScreen() {
                 {/* 계정 메뉴 */}
                 <View style={styles.menuSection}>
                     <Text style={styles.menuSectionTitle}>계정</Text>
-                    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/parent/profile-edit' as any)} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/edit' as any)} activeOpacity={0.7}>
                         <Ionicons name="person-outline" size={22} color={colors.textSecondary} />
                         <Text style={styles.menuItemText}>프로필 수정</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/parent/notification-settings' as any)} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/notifications' as any)} activeOpacity={0.7}>
                         <Ionicons name="notifications-outline" size={22} color={colors.textSecondary} />
                         <Text style={styles.menuItemText}>알림 설정</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
@@ -103,7 +103,7 @@ export default function ParentSettingsScreen() {
                 {/* 고객지원 */}
                 <View style={styles.menuSection}>
                     <Text style={styles.menuSectionTitle}>고객지원</Text>
-                    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/parent/support' as any)} activeOpacity={0.7}>
+                    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/support' as any)} activeOpacity={0.7}>
                         <Ionicons name="chatbubbles-outline" size={22} color={colors.textSecondary} />
                         <Text style={styles.menuItemText}>문의하기</Text>
                         <Ionicons name="chevron-forward" size={20} color={colors.textLight} />
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         padding: spacing.lg,
-        paddingBottom: 60,
+        paddingBottom: 120,
     },
     header: {
         flexDirection: 'row',

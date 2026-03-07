@@ -42,6 +42,9 @@ export default function FamilyManagementScreen() {
     const [isDeleting, setIsDeleting] = useState(false);
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
 
+    // 케어대상 비밀번호 초기화 관련 상태
+    const [isResettingPassword, setIsResettingPassword] = useState<string | null>(null); // parentId being reset
+
     useEffect(() => {
         fetchFamilyData();
     }, []);
@@ -387,6 +390,54 @@ export default function FamilyManagementScreen() {
         }
     };
 
+    // 케어대상 비밀번호 초기화 핸들러
+    const handleResetParentPassword = (parent: any) => {
+        const confirmMessage = `${parent.name}님의 비밀번호를 초기화하시겠습니까?\n\n초기화 후 표시되는 임시 비밀번호를 부모님께 알려주세요.`;
+        const doReset = async () => {
+            setIsResettingPassword(parent.id);
+            try {
+                // 명시적으로 세션 토큰 가져오기 (웹 환경에서 Authorization 헤더 손실 방지)
+                const { data: { session } } = await supabase.auth.getSession();
+                if (!session) throw new Error('로그인이 필요합니다.');
+
+                const { data, error } = await supabase.functions.invoke('reset-parent-password', {
+                    body: { p_parent_id: parent.id },
+                    headers: { Authorization: `Bearer ${session.access_token}` }
+                });
+                if (error) throw error;
+                if (data?.success && data?.tempPassword) {
+                    const msg = `${parent.name}님의 임시 비밀번호:\n\n🔑  ${data.tempPassword}  🔑\n\n이 비밀번호를 부모님께 알려주세요.\n로그인 후 앱 설정에서 변경하시면 됩니다.`;
+                    if (Platform.OS === 'web') {
+                        window.alert(`✅ 임시 비밀번호 발급 완료\n\n${msg}`);
+                    } else {
+                        Alert.alert('✅ 임시 비밀번호 발급 완료', msg, [{ text: '확인', style: 'default' }]);
+                    }
+                } else {
+                    throw new Error(data?.error || '알 수 없는 오류');
+                }
+            } catch (err: any) {
+                console.error('[resetParentPassword] Error:', err);
+                const errMsg = `비밀번호 초기화 실패: ${err.message}`;
+                if (Platform.OS === 'web') {
+                    window.alert(errMsg);
+                } else {
+                    Alert.alert('오류', errMsg);
+                }
+            } finally {
+                setIsResettingPassword(null);
+            }
+        };
+
+        if (Platform.OS === 'web') {
+            if (window.confirm(confirmMessage)) doReset();
+        } else {
+            Alert.alert('비밀번호 초기화', confirmMessage, [
+                { text: '취소', style: 'cancel' },
+                { text: '초기화', style: 'default', onPress: doReset }
+            ]);
+        }
+    };
+
     const copyToClipboard = async (text: string) => {
         await Clipboard.setStringAsync(text);
         if (Platform.OS === 'web') {
@@ -473,13 +524,25 @@ export default function FamilyManagementScreen() {
                             </View>
                         </View>
 
-                        {/* 탈퇴한 경우 삭제 버튼 표시 */}
-                        {isWithdrawn && (
+                        {/* 탈퇴한 경우 삭제 버튼 / 정상인 경우 비밀번호 초기화 버튼 */}
+                        {isWithdrawn ? (
                             <TouchableOpacity
                                 style={styles.deleteIconButton}
                                 onPress={() => initiateDeleteParent(item)}
                             >
                                 <Ionicons name="trash-outline" size={22} color={colors.error} />
+                            </TouchableOpacity>
+                        ) : (
+                            <TouchableOpacity
+                                style={styles.resetPwButton}
+                                onPress={() => handleResetParentPassword(item)}
+                                disabled={isResettingPassword === item.id}
+                            >
+                                {isResettingPassword === item.id ? (
+                                    <ActivityIndicator size="small" color={colors.primary} />
+                                ) : (
+                                    <Ionicons name="key-outline" size={20} color={colors.primary} />
+                                )}
                             </TouchableOpacity>
                         )}
                     </View>
@@ -751,6 +814,7 @@ const styles = StyleSheet.create({
     nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 2 },
     nameBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     deleteIconButton: { padding: 4 },
+    resetPwButton: { padding: 6, backgroundColor: colors.background, borderRadius: 8, borderWidth: 1, borderColor: colors.primary },
     statusBadgeJoined: { backgroundColor: colors.primary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     statusBadgePending: { backgroundColor: colors.textSecondary, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },
     statusBadgeWithdrawn: { backgroundColor: colors.error, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 },

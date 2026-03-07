@@ -4,7 +4,7 @@
     "slug": "on-anbu",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/icon_v2.png",
     "scheme": "onanbu",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,

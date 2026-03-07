@@ -68,6 +68,7 @@ export default function CareScreen() {
     const [mediaType, setMediaType] = useState<ActionType | null>(null);
     const [mediaBase64, setMediaBase64] = useState<string | null>(null);
     const [mediaUri, setMediaUri] = useState<string | null>(null);
+    const mediaFileRef = useRef<any>(null);
 
     // 오디오 녹음 전용 상태
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -180,9 +181,13 @@ export default function CareScreen() {
             let fileData: ArrayBuffer | Blob;
 
             if (Platform.OS === 'web') {
-                // 웹 환경: expo-file-system이 동작하지 않으므로 항상 fetch → blob 사용
-                const res = await fetch(uri);
-                fileData = await res.blob();
+                // 웹 환경: File 객체가 있으면 직접 사용, 없으면 fetch → blob
+                if (mediaFileRef.current) {
+                    fileData = mediaFileRef.current;
+                } else {
+                    const res = await fetch(uri);
+                    fileData = await res.blob();
+                }
             } else if (base64Data) {
                 fileData = decode(base64Data);
             } else if (type === 'voice_cheer') {
@@ -215,7 +220,7 @@ export default function CareScreen() {
             const filePath = `${folder}/${fileName}`;
 
             const { error } = await supabase.storage
-                .from('media')
+                .from('onanbu_media')
                 .upload(filePath, fileData, {
                     contentType,
                     upsert: true
@@ -224,7 +229,7 @@ export default function CareScreen() {
             if (error) throw error;
 
             const { data: { publicUrl } } = supabase.storage
-                .from('media')
+                .from('onanbu_media')
                 .getPublicUrl(filePath);
 
             return publicUrl;
@@ -290,6 +295,7 @@ export default function CareScreen() {
             setMediaUri(null);
             setMediaBase64(null);
             setMediaType(null);
+            mediaFileRef.current = null;
             setIsLoadingAd(false);
         }
     };
@@ -391,8 +397,28 @@ export default function CareScreen() {
 
             if (!result.canceled && result.assets && result.assets.length > 0) {
                 const asset = result.assets[0];
+                
+                // 50MB 용량 제한 체크
+                const MAX_SIZE_BYTES = 50 * 1024 * 1024;
+                let fileSize = asset.fileSize; // Native
+                if (isWeb && asset.file) {
+                    fileSize = asset.file.size; // Web
+                }
+                if (fileSize && fileSize > MAX_SIZE_BYTES) {
+                    Alert.alert('용량 초과', '50MB 이하의 파일만 첨부할 수 있습니다.');
+                    if (isWeb) {
+                        window.alert('50MB 이하의 파일만 첨부할 수 있습니다.');
+                    }
+                    return;
+                }
+
                 setMediaType(isVideo ? 'video' : 'photo');
                 setMediaUri(asset.uri);
+                if (isWeb && asset.file) {
+                    mediaFileRef.current = asset.file;
+                } else {
+                    mediaFileRef.current = null;
+                }
                 if (!isWeb && !isVideo && asset.base64) {
                     setMediaBase64(asset.base64);
                 } else {
@@ -424,6 +450,7 @@ export default function CareScreen() {
         setMediaUri(null);
         setMediaBase64(null);
         setMediaType(null);
+        mediaFileRef.current = null;
     };
 
     const handleActionPress = useCallback(async (type: ActionType) => {

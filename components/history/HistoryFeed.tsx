@@ -388,11 +388,11 @@ export function HistoryFeed({
         const performDelete = async () => {
             try {
                 // If there is media, try to delete it from storage first
-                if (contentUrl && contentUrl.includes('supabase.co/storage/v1/object/public/media/')) {
+                if (contentUrl && contentUrl.includes('supabase.co/storage/v1/object/public/onanbu_media/')) {
                     try {
-                        const filePath = contentUrl.split('supabase.co/storage/v1/object/public/media/')[1];
+                        const filePath = contentUrl.split('supabase.co/storage/v1/object/public/onanbu_media/')[1];
                         if (filePath) {
-                            await supabase.storage.from('media').remove([filePath]);
+                            await supabase.storage.from('onanbu_media').remove([filePath]);
                         }
                     } catch (storageErr) {
                         console.log('Storage delete error (ignored):', storageErr);

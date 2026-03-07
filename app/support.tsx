@@ -18,7 +18,7 @@ const FAQ_DATA = [
     },
     {
         q: '회원탈퇴는 어떻게 하나요?',
-        a: '설정 화면 내 "내 정보 수정" 메뉴의 하단 혹은 문의하기를 통해 탈퇴 요청을 접수할 수 있습니다.'
+        a: '설정(톱니바퀴) 화면의 맨 아래 [회원탈퇴] 메뉴에서 직접 진행하실 수 있습니다. 가입하신 역할(주케어자, 보조케어자, 케어대상)에 따라 탈퇴 옵션이 다르니, 세부 사항은 바로 위에 있는 \'온안부 앱 이용 가이드 (매뉴얼)\' 하위 상세 목록을 확인해 주시기 바랍니다.'
     },
     {
         q: '아이디(이메일) 변경이 가능한가요?',
@@ -38,14 +38,35 @@ const FAQ_DATA = [
     }
 ];
 
+const MANUAL_DATA = [
+    {
+        title: '👨‍👩‍👧 주케어자 (자녀 / 가족 대표) 가이드',
+        content: `• 가입 및 초대: 앱/웹 첫 화면에서 [주 케어자로 시작할게요]를 선택하여 가입합니다. 가입 후 [가족 관리] 메뉴에서 부모님과 보조케어자를 초대할 수 있는 6자리 코드를 생성할 수 있습니다.\n\n• 앱 사용법: 홈 탭에서 부모님의 기상 여부와 기분을 확인하고, 케어 탭에서 내 사진과 목소리가 담긴 안부를 전송하세요. 전달 시 15초 리워드 광고가 재생됩니다.\n\n• 전체보기: 히스토리 탭의 [모아보기(Play Movie)] 메뉴에서 가족의 추억을 모아서 영상처럼 감상할 수 있습니다.\n\n• 회원탈퇴: 설정 > 회원탈퇴에서 내 계정만 조용히 탈퇴할지, 혹은 내가 만든 가족방의 부모님 계정과 사진까지 모두 초기화할지 선택할 수 있습니다.`
+    },
+    {
+        title: '👤 보조케어자 (가족 / 친척) 가이드',
+        content: `• 가입 및 초대: 앱/웹 첫 화면에서 초대코드로 시작하기를 누른 후 [함께 케어할 보조 케어자예요]를 누르고 주케어자가 공유해준 6자리 초대코드를 입력하고 이메일과(로그인 계정) 전화번호, 비밀번호 6자리 이상을 설정하고 시작하기를 누른 후 입력한 이메일과 설정한 비밀번호로 로그인하여 가족방에 입장됩니다.\n\n• 앱 사용법: 주케어자와 화면이 동일합니다. 홈 화면에서 부모님의 상태를 함께 확인하고 내가 직접 부모님께 안부를 보낼 수도 있습니다.\n\n• 회원탈퇴: 설정 > 회원탈퇴 창에서 버튼을 눌러 탈퇴 시 가족방은 그대로 유지되며 본인의 계정에만 연결이 해제됩니다.`
+    },
+    {
+        title: '👴 케어대상 (부모님) 가이드',
+        content: `• 시작하기: 첫 화면에서 초대코드로 시작하기를 누른 후 [케어대상으로 초대받았어요] 버튼을 누르고, 자녀분이 알려준 6자리 숫자를 입력하고 전화번호와 비밀번호를 설정 후 시작하기를 누른 후 초대코드와 비밀번호로 로그인 하면 가입이 끝납니다.\n\n• 나의 안부 전하기: 매일 아침 [일어났어요! ☀️] 버튼 한 번만 누르면 자녀에게 알림이 갑니다. 내 오늘의 기분 이모지를 눌러 컨디션을 표현할 수도 있고, 사진/목소리 버튼으로 손쉽게 자녀에게 직접 안부를 띄울 수도 있습니다.\n\n• 자녀의 안부 듣기: 홈 화면 스크롤을 살짝만 내리면 자녀들과 손주들이 보낸 사진, 음성, 텍스트 안부 편지를 바로 눌러서 볼 수 있습니다.\n\n• 회원탈퇴: 앱 하단의 톱니바퀴(환경설정) > 회원탈퇴 버튼을 통해 가족방에 내 사진과 목소리는 남겨두고 앱 사용만 그만둘지, 완벽하게 모든 내 기록과 계정을 삭제할지 선택하시면 됩니다.`
+    }
+];
+
 export default function SupportScreen() {
     const router = useRouter();
     const [isEmailModalVisible, setIsEmailModalVisible] = useState(false);
     const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(null);
+    const [openManualIndex, setOpenManualIndex] = useState<number | null>(null);
 
     const toggleFaq = (index: number) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
         setOpenFaqIndex(openFaqIndex === index ? null : index);
+    };
+
+    const toggleManual = (index: number) => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setOpenManualIndex(openManualIndex === index ? null : index);
     };
 
     const supportEmail = 'yujinit2005@gmail.com';
@@ -125,7 +146,39 @@ export default function SupportScreen() {
                     </Text>
                 </View>
 
-
+                {/* 매뉴얼(앱 사용 방법) 아코디언 컴포넌트 */}
+                <View style={styles.faqSection}>
+                    <Text style={styles.faqHeaderTitle}>온안부 앱 이용 가이드 (매뉴얼)</Text>
+                    {MANUAL_DATA.map((manual, index) => {
+                        const isOpen = openManualIndex === index;
+                        return (
+                            <View key={`manual-${index}`} style={styles.faqItemContainer}>
+                                <Pressable
+                                    style={styles.faqQuestionRow}
+                                    onPress={() => toggleManual(index)}
+                                >
+                                    <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
+                                        <Text style={[styles.faqQuestionText, { fontWeight: '600' }]}>
+                                            {manual.title}
+                                        </Text>
+                                    </View>
+                                    <Ionicons
+                                        name={isOpen ? 'chevron-up' : 'chevron-down'}
+                                        size={20}
+                                        color={colors.primary}
+                                    />
+                                </Pressable>
+                                {isOpen && (
+                                    <View style={[styles.faqAnswerBox, { backgroundColor: '#F0F9FF', borderTopColor: '#BAE6FD' }]}>
+                                        <Text style={[styles.faqAnswerText, { color: '#0F172A' }]}>
+                                            {manual.content}
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                        );
+                    })}
+                </View>
 
                 {/* FAQ 아코디언 컴포넌트 */}
                 <View style={styles.faqSection}>
