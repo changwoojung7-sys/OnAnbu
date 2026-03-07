@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Audio, ResizeMode, Video } from 'expo-av';
 import { useFocusEffect } from 'expo-router';
-import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Image, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, Animated, Image, Modal, Platform, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { colors } from '@/constants/Colors';
 import { strings } from '@/constants/strings';
@@ -55,6 +55,10 @@ export function HistoryFeed({
     const [bgmSound, setBgmSound] = useState<Audio.Sound | null>(null);
 
     const { addAction } = useActionStore(); // Add Ad logic variables here
+
+    // 삭제 알림 관련
+    const [deletingId, setDeletingId] = useState<string | null>(null);
+    const deleteToastOpacity = useRef(new Animated.Value(0)).current;
 
     // 현재 연동된 대표 부모님 / 그룹 파악
     const parentName = selectedParent?.name || '부모님';
@@ -400,9 +404,30 @@ export function HistoryFeed({
                     .from('action_logs')
                     .delete()
                     .eq('id', id);
-                if (error) throw error;
 
-                // 로컬 상태 즉시 업데이트
+                // 로컬 상태 즉시 업데이트 전에 삭제 애니메이션 표시
+                setDeletingId(id);
+                deleteToastOpacity.setValue(0);
+
+                // 삭제 완료 토스트 페이드 인
+                Animated.timing(deleteToastOpacity, {
+                    toValue: 1,
+                    duration: 400,
+                    useNativeDriver: true,
+                }).start(() => {
+                    // 2초 후 페이드 아웃 및 상태 초기화
+                    setTimeout(() => {
+                        Animated.timing(deleteToastOpacity, {
+                            toValue: 0,
+                            duration: 400,
+                            useNativeDriver: true,
+                        }).start(() => {
+                            setDeletingId(null);
+                        });
+                    }, 2000);
+                });
+
+                // 목록에서는 즉시 제거 (삭제된 자리에 토스트만 남음)
                 setActions(prev => prev.filter(a => a.id !== id));
             } catch (err) {
                 console.error('Delete error:', err);
@@ -546,6 +571,23 @@ export function HistoryFeed({
         );
     };
 
+    const renderActionWithDeleteToast = (item: any) => {
+        const isDeleting = deletingId === item.id;
+
+        if (isDeleting) {
+            return (
+                <View key={`deleting-${item.id}`} style={styles.deleteToastContainer}>
+                    <Animated.View style={[styles.deleteToast, { opacity: deleteToastOpacity }]}>
+                        <Ionicons name="trash" size={24} color={colors.textSecondary} />
+                        <Text style={styles.deleteToastText}>기록이 삭제되었습니다</Text>
+                    </Animated.View>
+                </View>
+            );
+        }
+
+        return renderActionItem(item);
+    };
+
     return (
         <View style={{ flex: 1 }}>
             <ScrollView
@@ -585,7 +627,7 @@ export function HistoryFeed({
 
                 {actions.length > 0 ? (
                     <View style={styles.listContainer}>
-                        {actions.map(renderActionItem)}
+                        {actions.map(renderActionWithDeleteToast)}
                     </View>
                 ) : (
                     <View style={styles.emptyContainer}>
@@ -825,6 +867,32 @@ const styles = StyleSheet.create({
         elevation: 3,
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.02)',
+    },
+    deleteToastContainer: {
+        marginBottom: spacing.lg,
+        height: 120, // 삭제된 카드의 대략적인 높이 유지
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#f8f9fa',
+        borderRadius: borderRadius.xl,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+        borderStyle: 'dashed',
+    },
+    deleteToast: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        borderRadius: 30,
+    },
+    deleteToastText: {
+        fontSize: 20,
+        color: colors.textSecondary,
+        fontWeight: '700',
+        marginLeft: 10,
+        textAlign: 'center',
     },
     actionCardHeader: {
         flexDirection: 'row',
