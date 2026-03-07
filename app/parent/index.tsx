@@ -3,7 +3,7 @@ import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '@/constants/Colors';
@@ -23,8 +23,36 @@ export default function ParentHomeScreen() {
     const [alreadyAwake, setAlreadyAwake] = useState(false);
     const [awakeLoading, setAwakeLoading] = useState(false);
     const [sendingMedia, setSendingMedia] = useState(false);
+
     const [groupId, setGroupId] = useState<string | null>(null);
     const [guardianId, setGuardianId] = useState<string | null>(null);
+
+    // 전송 완료 토스트 관련
+    const [showSuccessToast, setShowSuccessToast] = useState(false);
+    const [successMessage, setSuccessMessage] = useState('');
+    const toastOpacity = React.useRef(new Animated.Value(0)).current;
+
+    const triggerSuccessToast = (message: string) => {
+        setSuccessMessage(message);
+        setShowSuccessToast(true);
+        // 페이드 인
+        Animated.timing(toastOpacity, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+        }).start(() => {
+            // 3초 대기 후 페이드 아웃
+            setTimeout(() => {
+                Animated.timing(toastOpacity, {
+                    toValue: 0,
+                    duration: 500,
+                    useNativeDriver: true,
+                }).start(() => {
+                    setShowSuccessToast(false);
+                });
+            }, 3000);
+        });
+    };
 
     // 음성 녹음 관련
     const [recording, setRecording] = useState<Audio.Recording | null>(null);
@@ -244,7 +272,7 @@ export default function ParentHomeScreen() {
             }
 
             setAlreadyAwake(true);
-            Alert.alert('알림', `${guardianName}에게 기상 알림을 보냈어요! ☀️`);
+            triggerSuccessToast(`${guardianName}님께 소중한 기상 안부가 전해졌어요! ☀️`);
         } catch (error: any) {
             console.error('[Parent] Awake error:', error);
             Alert.alert('오류', `알림 전송 실패: ${error?.message || '알 수 없는 오류'}`);
@@ -384,7 +412,8 @@ export default function ParentHomeScreen() {
 
             if (logError) throw logError;
 
-            Alert.alert('전송 완료', `${guardianName}에게 ${isVideo ? '동영상을' : '사진을'} 보냈어요! 💌`);
+            triggerSuccessToast(`${guardianName}님께 ${isVideo ? '동영상' : '사진'} 안부가 잘 전달되었어요! 💌`);
+            fetchPendingActions(); // 목록 갱신 시도
         } catch (error: any) {
             console.error('Photo send error:', error);
             Alert.alert('오류', '사진 전송 중 문제가 발생했습니다.');
@@ -471,7 +500,8 @@ export default function ParentHomeScreen() {
 
             if (logError) throw logError;
 
-            Alert.alert('전송 완료', `${guardianName}에게 음성 메시지를 보냈어요! 🎤`);
+            triggerSuccessToast(`${guardianName}님께 목소리 안부가 따뜻하게 전달되었어요! 🎤`);
+            fetchPendingActions(); // 목록 갱신 시도
         } catch (error: any) {
             console.error('Voice send error:', error);
             Alert.alert('오류', '음성 전송 중 문제가 발생했습니다.');
@@ -521,6 +551,14 @@ export default function ParentHomeScreen() {
             <View style={styles.mainContainer}>
                 {/* Header */}
                 <View style={styles.header}>
+                    {/* 전송 완료 토스트 */}
+                    {showSuccessToast && (
+                        <Animated.View style={[styles.successToast, { opacity: toastOpacity }]}>
+                            <Ionicons name="checkmark-circle" size={20} color={colors.success} />
+                            <Text style={styles.successToastText}>{successMessage}</Text>
+                        </Animated.View>
+                    )}
+
                     <View style={{ flex: 1, paddingRight: spacing.sm }}>
                         <Text style={styles.greeting}>안녕하세요, {user?.name || '사용자'}님 🌸</Text>
                         <Text style={styles.subGreeting}>
@@ -800,6 +838,30 @@ const styles = StyleSheet.create({
     },
     awakeTextDone: {
         color: colors.textSecondary,
+    },
+    // Success Toast
+    successToast: {
+        position: 'absolute',
+        top: -10,
+        left: 0,
+        right: 0,
+        backgroundColor: '#E8F5E9',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingVertical: spacing.sm,
+        paddingHorizontal: spacing.md,
+        borderRadius: borderRadius.full,
+        zIndex: 1000,
+        borderWidth: 1,
+        borderColor: colors.success,
+        ...softShadow,
+    },
+    successToastText: {
+        ...typography.body,
+        color: colors.success,
+        fontWeight: 'bold',
+        marginLeft: spacing.xs,
     },
     // Sections
     section: {
