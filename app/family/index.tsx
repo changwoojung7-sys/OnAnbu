@@ -3,6 +3,7 @@ import { softShadow } from '@/constants/theme';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/authStore';
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
@@ -325,6 +326,15 @@ export default function FamilyManagementScreen() {
         }
     };
 
+    const copyToClipboard = async (text: string) => {
+        await Clipboard.setStringAsync(text);
+        if (Platform.OS === 'web') {
+            window.alert('초대코드가 복사되었습니다! 📋');
+        } else {
+            Alert.alert('복사 완료', '초대코드가 클립보드에 복사되었습니다. 📋');
+        }
+    };
+
     const renderMember = ({ item }: { item: FamilyMember }) => {
         const isSelf = item.profile.id === user?.id;
         const amIPrimary = members.some(m => m.group_id === item.group_id && m.profile.id === user?.id && m.role === 'primary');
@@ -345,7 +355,13 @@ export default function FamilyManagementScreen() {
                             {item.role === 'primary' ? '주 보호자' : '보조 보호자'}
                         </Text>
                         {(item as any).invite_codes && (item as any).invite_codes.length > 0 && (
-                            <Text style={styles.codeBadge}>#{(item as any).invite_codes.join(', #')}</Text>
+                            <Pressable
+                                style={styles.copyBadgeContainer}
+                                onPress={() => copyToClipboard((item as any).invite_codes[0])}
+                            >
+                                <Text style={styles.codeBadge}>#{(item as any).invite_codes.join(', #')}</Text>
+                                <Ionicons name="copy-outline" size={12} color={colors.textLight} style={{ marginLeft: 4 }} />
+                            </Pressable>
                         )}
                     </View>
                 </View>
@@ -376,7 +392,13 @@ export default function FamilyManagementScreen() {
                     <View style={styles.roleContainer}>
                         <Text style={styles.memberRole}>케어대상</Text>
                         {item.invite_codes && item.invite_codes.length > 0 && (
-                            <Text style={styles.codeBadge}>#{item.invite_codes.join(', #')}</Text>
+                            <Pressable
+                                style={styles.copyBadgeContainer}
+                                onPress={() => copyToClipboard(item.invite_codes[0])}
+                            >
+                                <Text style={[styles.codeBadge, styles.codeBadgeLarge]}>#{item.invite_codes.join(', #')}</Text>
+                                <Ionicons name="copy-outline" size={14} color={colors.primary} style={{ marginLeft: 4 }} />
+                            </Pressable>
                         )}
                     </View>
                 </View>
@@ -549,7 +571,9 @@ const styles = StyleSheet.create({
     meBadge: { color: colors.primary, fontSize: 14 },
     roleContainer: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 },
     memberRole: { fontSize: 13, color: colors.textSecondary },
+    copyBadgeContainer: { flexDirection: 'row', alignItems: 'center' },
     codeBadge: { fontSize: 11, color: colors.textLight, backgroundColor: colors.background, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, fontWeight: '600' },
+    codeBadgeLarge: { fontSize: 16, color: colors.primary, backgroundColor: '#EDF2EF', paddingHorizontal: 8, paddingVertical: 4, fontWeight: '800' },
     emptyBox: { alignItems: 'center', padding: 20, backgroundColor: colors.cardBg, borderRadius: 12 },
     emptyText: { color: colors.textSecondary, marginBottom: 12 },
     emptyButtonRow: { flexDirection: 'row', gap: 8 },
