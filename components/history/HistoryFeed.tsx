@@ -58,6 +58,9 @@ export function HistoryFeed({
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const deleteToastOpacity = useRef(new Animated.Value(0)).current;
 
+    // Fullscreen Media Playback state
+    const [selectedMedia, setSelectedMedia] = useState<{ url: string; type: 'photo' | 'video' } | null>(null);
+
     // 현재 연동된 대표 부모님 / 그룹 파악
     const parentName = selectedParent?.name || '부모님';
 
@@ -531,7 +534,17 @@ export function HistoryFeed({
 
                 {/* Media Block (Photo or Video) */}
                 {(isPhoto || isVideo) && (
-                    <View style={styles.mediaContainer}>
+                    <TouchableOpacity
+                        style={styles.mediaContainer}
+                        activeOpacity={0.8}
+                        onPress={() => {
+                            if (isPhoto) {
+                                setSelectedMedia({ url: item.content_url, type: 'photo' });
+                            } else if (isVideo) {
+                                setSelectedMedia({ url: item.content_url, type: 'video' });
+                            }
+                        }}
+                    >
                         {isPhoto && (
                             <Image
                                 source={{ uri: item.content_url }}
@@ -540,15 +553,21 @@ export function HistoryFeed({
                             />
                         )}
                         {isVideo && (
-                            <Video
-                                style={styles.mediaVideo}
-                                source={{ uri: item.content_url }}
-                                useNativeControls
-                                resizeMode={ResizeMode.COVER}
-                                isLooping={false}
-                            />
+                            <View>
+                                <Video
+                                    style={styles.mediaVideo}
+                                    source={{ uri: item.content_url }}
+                                    useNativeControls={false}
+                                    resizeMode={ResizeMode.COVER}
+                                    isLooping={false}
+                                    shouldPlay={false}
+                                />
+                                <View style={styles.videoOverlay}>
+                                    <Ionicons name="play-circle" size={48} color="rgba(255,255,255,0.8)" />
+                                </View>
+                            </View>
                         )}
-                    </View>
+                    </TouchableOpacity>
                 )}
 
                 {/* Text Message Block / Caption */}
@@ -782,6 +801,42 @@ export function HistoryFeed({
                 <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' }}>
                     <ActivityIndicator size="large" color="#ffffff" />
                     <Text style={{ color: '#ffffff', marginTop: 16, fontSize: 16, fontWeight: '600' }}>추억을 불러오는 중입니다...</Text>
+                </View>
+            </Modal>
+            {/* Fullscreen Media Viewer Modal */}
+            <Modal
+                visible={!!selectedMedia}
+                animationType="fade"
+                transparent={true}
+                onRequestClose={() => setSelectedMedia(null)}
+            >
+                <View style={styles.fullscreenMediaContainer}>
+                    <TouchableOpacity
+                        style={styles.fullscreenCloseBtn}
+                        onPress={() => setSelectedMedia(null)}
+                        hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                    >
+                        <Ionicons name="close" size={32} color="#fff" />
+                    </TouchableOpacity>
+
+                    {selectedMedia?.type === 'photo' && (
+                        <Image
+                            source={{ uri: selectedMedia.url }}
+                            style={styles.fullscreenImage}
+                            resizeMode="contain"
+                        />
+                    )}
+
+                    {selectedMedia?.type === 'video' && (
+                        <Video
+                            source={{ uri: selectedMedia.url }}
+                            style={styles.fullscreenVideo}
+                            useNativeControls={true}
+                            resizeMode={ResizeMode.CONTAIN}
+                            shouldPlay={true}
+                            isLooping={false}
+                        />
+                    )}
                 </View>
             </Modal>
         </View>
@@ -1070,5 +1125,37 @@ const styles = StyleSheet.create({
     },
     movieControlBtn: {
         padding: spacing.md,
+    },
+    // Media Card Inline Styles
+    videoOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: borderRadius.lg,
+    },
+    // Fullscreen Media Modal Styles
+    fullscreenMediaContainer: {
+        flex: 1,
+        backgroundColor: '#000',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    fullscreenCloseBtn: {
+        position: 'absolute',
+        top: 50,
+        right: 20,
+        zIndex: 50,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        borderRadius: 20,
+        padding: 4,
+    },
+    fullscreenImage: {
+        width: '100%',
+        height: '100%',
+    },
+    fullscreenVideo: {
+        width: '100%',
+        height: '100%',
     },
 });
