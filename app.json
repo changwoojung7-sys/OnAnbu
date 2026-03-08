@@ -26,7 +26,7 @@
         "backgroundColor": "#F5F5F0"
       },
       "package": "com.onanbu.app",
-      "versionCode": 1
+      "versionCode": 4
     },
     "web": {
       "bundler": "metro",
