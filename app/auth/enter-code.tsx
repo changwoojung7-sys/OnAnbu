@@ -11,18 +11,38 @@ import { useAuthStore } from '@/stores/authStore';
 
 export default function EnterCodeScreen() {
     const router = useRouter();
-    const params = useLocalSearchParams<{ type: string }>();
+    const params = useLocalSearchParams<{ type: string; code?: string }>();
     const { user, setUser, setIsAuthenticated, setPendingInviteCode } = useAuthStore();
 
-    const [code, setCode] = useState('');
+    const [code, setCode] = useState(params.code || '');
     const [isLoading, setIsLoading] = useState(false);
     const [verifiedInvitation, setVerifiedInvitation] = useState<any>(null);
     const [errorMsg, setErrorMsg] = useState('');
 
     const isParentType = params.type === 'parent';
 
-    const handleVerifyCode = async () => {
-        const cleanCode = code.trim().toUpperCase();
+    // 딥링크에서 코드를 받거나 인증 스토어에서 받은 경우 자동 로그인 시도
+    React.useEffect(() => {
+        let initialCode = params.code || '';
+        if (!initialCode) {
+            const store = useAuthStore.getState();
+            if (store.pendingInviteCode) {
+                initialCode = store.pendingInviteCode;
+                // 한 번 사용하면 지우기 (옵셔널)
+                store.setPendingInviteCode(null);
+            }
+        }
+
+        if (initialCode) {
+            setCode(initialCode);
+            // 코드 값이 정상적으로 세팅된 직후 자동 검증을 시작하려면, Timeout으로 한 박자 늦추거나 
+            // 의존성 배열에 넣어야 하지만, 여기서는 초기 마운트 시에만 실행하도록 합니다.
+            verifyCodeLogic(initialCode);
+        }
+    }, [params.code]);
+
+    const verifyCodeLogic = async (codeToVerify: string) => {
+        const cleanCode = codeToVerify.trim().toUpperCase();
         setErrorMsg('');
 
         if (cleanCode.length !== 6) {
@@ -74,6 +94,10 @@ export default function EnterCodeScreen() {
         } finally {
             setIsLoading(false);
         }
+    };
+
+    const handleVerifyCode = () => {
+        verifyCodeLogic(code);
     };
 
     const handleAcceptInvitation = () => {

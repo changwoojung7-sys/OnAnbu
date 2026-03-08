@@ -72,10 +72,10 @@ export default function InviteParentScreen() {
     };
 
     const handleCopyCode = async () => {
-        // Share API로 코드 공유 (클립보드 대신)
+        const link = `https://onanbu.calamus.ai.kr/invite?code=${inviteCode}&type=parent`;
         try {
             await Share.share({
-                message: inviteCode,
+                message: link,
             });
         } catch (error) {
             Alert.alert('알림', `초대코드: ${inviteCode}`);
@@ -83,9 +83,10 @@ export default function InviteParentScreen() {
     };
 
     const handleShare = async () => {
+        const link = `https://onanbu.calamus.ai.kr/invite?code=${inviteCode}&type=parent`;
         try {
             await Share.share({
-                message: `${parentName}님, ONANBU 앱에서 서로의 따뜻한 안부를 받아보세요!\n\n초대코드: ${inviteCode}\n\n앱 다운로드 후 초대코드를 입력해주세요.`,
+                message: `[ONANBU 가족 초대]\n\n${parentName}님, 자녀분이 앱을 통해 안부를 전하고 싶어 합니다.\n\n아래 링크를 눌러 앱을 설치하고 바로 시작해 보세요!\n👉 ${link}\n\n(직접 입력 시 코드: ${inviteCode})`,
             });
         } catch (error) {
             console.error(error);

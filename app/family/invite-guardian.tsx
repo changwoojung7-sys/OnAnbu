@@ -108,9 +108,10 @@ export default function InviteGuardianScreen() {
     };
 
     const handleCopyCode = async () => {
+        const link = `https://onanbu.calamus.ai.kr/invite?code=${inviteCode}&type=guardian`;
         try {
             await Share.share({
-                message: inviteCode,
+                message: link,
             });
         } catch (error) {
             Alert.alert('알림', `초대코드: ${inviteCode}`);
@@ -118,9 +119,10 @@ export default function InviteGuardianScreen() {
     };
 
     const handleShare = async () => {
+        const link = `https://onanbu.calamus.ai.kr/invite?code=${inviteCode}&type=guardian`;
         try {
             await Share.share({
-                message: `${guardianName}님, ONANBU 앱에서 함께 케어해요!\n\n초대코드: ${inviteCode}\n\n앱에서 회원가입 후 초대코드를 입력해주세요.`,
+                message: `[ONANBU 가족 초대]\n\n${guardianName}님, ONANBU 앱에서 함께 케어해요!\n\n아래 링크를 눌러 앱을 설치하고 바로 시작해 보세요!\n👉 ${link}\n\n(직접 입력 시 코드: ${inviteCode})`,
             });
         } catch (error) {
             console.error(error);

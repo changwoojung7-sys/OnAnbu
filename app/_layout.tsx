@@ -291,7 +291,7 @@ function RootLayoutNav() {
     if (!isReady) return;
 
     const inAuthGroup = segments[0] === 'auth';
-    const isExemptedRoute = segments[0] === 'support' || segments[0] === 'terms' || segments[0] === 'privacy';
+    const isExemptedRoute = segments[0] === 'support' || segments[0] === 'terms' || segments[0] === 'privacy' || segments[0] === 'invite';
     const isExemptedFromAuthRedirect = segments[1] === 'enter-code'; // 초대코드 입력은 로그인 후에도 접근 가능할 수 있음
 
     if (isAuthenticated && inAuthGroup && !isExemptedFromAuthRedirect) {
