@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 interface FamilyMember {
@@ -604,7 +604,7 @@ export default function FamilyManagementScreen() {
                     <ActivityIndicator size="large" color={colors.primary} />
                 </View>
             ) : (
-                <View style={styles.content}>
+                <ScrollView contentContainerStyle={styles.content}>
                     <View style={styles.section}>
                         <View style={styles.sectionHeader}>
                             <Text style={styles.sectionTitle}>케어대상</Text>
@@ -670,7 +670,7 @@ export default function FamilyManagementScreen() {
                             <Text style={styles.inviteButtonText}>보조 보호자 초대하기</Text>
                         </Pressable>
                     </View>
-                </View>
+                </ScrollView>
             )}
 
             {/* 초대 코드 입력 모달 */}
