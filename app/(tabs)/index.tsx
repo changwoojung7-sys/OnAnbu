@@ -113,7 +113,7 @@ export default function HomeScreen() {
                 // 현재 선택된 부모님의 프로필도 최신 데이터로 갱신
                 if (currentSelected) {
                   const updated = fetchedParents.find((p: any) => p.id === currentSelected.id);
-                  if (updated) {
+                  if (updated && JSON.stringify(updated) !== JSON.stringify(currentSelected)) {
                     setSelectedParent(updated);
                   }
                 }
@@ -210,10 +210,10 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={commonStyles.container} edges={['top']}>
-      <View style={[styles.scrollView, { padding: spacing.lg, paddingBottom: 0 }]}>
+      <View style={[styles.scrollView, { paddingTop: spacing.sm, paddingHorizontal: spacing.lg, paddingBottom: 0 }]}>
         {/* Header */}
         <View style={[styles.header, parents.length === 0 && { marginBottom: spacing.xl }]}>
-          <Pressable onPress={() => { if (parents.length > 1) setParentModalVisible(true); }}>
+          <Pressable onPress={() => { if (parents.length > 1) setParentModalVisible(true); }} style={{ flex: 1, marginRight: spacing.md }}>
             <ParentProfile
               name={parents.length === 0 ? "케어대상자 연결 대기 중" : parentName}
               avatarUrl={parentAvatar}
@@ -361,6 +361,11 @@ export default function HomeScreen() {
                   selectedParent?.id === parent.id && styles.parentSelectItemSelected
                 ]}
                 onPress={() => {
+                  if (selectedParent?.id !== parent.id) {
+                    setTodayActions([]);
+                    setTodayMood(null);
+                    setIsAwake(false);
+                  }
                   setSelectedParent(parent);
                   setParentModalVisible(false);
                 }}
