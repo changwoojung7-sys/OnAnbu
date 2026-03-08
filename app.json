@@ -2,7 +2,7 @@
   "expo": {
     "name": "ONANBU",
     "slug": "on-anbu",
-    "version": "1.0.0",
+    "version": "1.0.6",
     "orientation": "portrait",
     "icon": "./assets/images/icon_v2.png",
     "scheme": "onanbu",
@@ -26,7 +26,7 @@
         "backgroundColor": "#F5F5F0"
       },
       "package": "com.onanbu.app",
-      "versionCode": 4
+      "versionCode": 6
     },
     "web": {
       "bundler": "metro",

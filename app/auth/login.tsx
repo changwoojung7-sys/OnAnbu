@@ -444,6 +444,21 @@ export default function LoginScreen() {
                         <Text style={styles.signUpLink}>초대 코드로 시작하기</Text>
                     </Pressable>
                 </View>
+
+                {/* 하단 공통 링크 */}
+                <View style={styles.bottomLinksContainer}>
+                    <Pressable onPress={() => router.push('/support')}>
+                        <Text style={styles.bottomLinkText}>문의하기</Text>
+                    </Pressable>
+                    <View style={styles.bottomLinkDivider} />
+                    <Pressable onPress={() => router.push('/terms')}>
+                        <Text style={styles.bottomLinkText}>이용약관</Text>
+                    </Pressable>
+                    <View style={styles.bottomLinkDivider} />
+                    <Pressable onPress={() => router.push('/privacy')}>
+                        <Text style={styles.bottomLinkText}>개인정보처리방침</Text>
+                    </Pressable>
+                </View>
             </View>
         </SafeAreaView>
     );
@@ -474,6 +489,9 @@ const styles = StyleSheet.create({
     signUpLink: { ...typography.body, color: colors.primary, fontWeight: '600' },
     loginErrorBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.error + '18', borderRadius: borderRadius.md, paddingVertical: 10, paddingHorizontal: 14, marginTop: spacing.md, gap: 8 },
     loginErrorText: { ...typography.small, color: colors.error, flex: 1, lineHeight: 18 },
+    bottomLinksContainer: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: spacing.xxl, gap: spacing.sm },
+    bottomLinkText: { ...typography.small, color: colors.textSecondary, textDecorationLine: 'underline' },
+    bottomLinkDivider: { width: 1, height: 10, backgroundColor: colors.border },
     // Modal Styles
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
     modalContent: { width: '85%', backgroundColor: 'white', borderRadius: 16, padding: 24, alignItems: 'center', ...softShadow },

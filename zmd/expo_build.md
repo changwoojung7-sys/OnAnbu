@@ -81,8 +81,15 @@ eas build --platform android
 설정 완료 후, 다음 명령어를 실행하면 폰에 직접 설치 가능한 `.apk` 파일이 생성됩니다:
 
 ```bash
+
 eas build -p android --profile preview
 ```
+
+# eas build --local 명령어 사용
+
+엑스포의 편리한 빌드 과정을 그대로 쓰고 싶지만, 서버만 내 컴퓨터를 사용하고 싶을 때 쓰는 명령어입니다. 이 역시 무료입니다.
+
+eas build --platform android --profile production --local
 
 ---
 
